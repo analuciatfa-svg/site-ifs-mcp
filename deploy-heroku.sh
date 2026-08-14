@@ -18,6 +18,9 @@ cd "$(dirname "$0")"
 
 export PATH="/Users/aferraz/.devbar/pkgs/npm/24.18.0/node-v24.18.0-darwin-arm64/bin:$PATH"
 APP_NAME="${1:-}"
+# Contas Salesforce internas NÃO podem ter app pessoal — todo app precisa de um
+# team. Passe o team via 2º argumento ou HEROKU_TEAM (ex.: se-latam).
+TEAM="${2:-${HEROKU_TEAM:-}}"
 
 echo "▶ Montando o artefato (build.sh)..."
 ./build.sh
@@ -46,13 +49,15 @@ else
   git -c commit.gpgsign=false commit -q -m "Site das IFs MCP — atualização" || true
 fi
 
-# cria/associa o app
+# cria/associa o app (sempre num team — exigência de conta Salesforce interna)
+TEAMFLAG=""
+[ -n "$TEAM" ] && TEAMFLAG="--team $TEAM"
 if [ -n "$APP_NAME" ]; then
-  echo "▶ Criando/associando app: $APP_NAME"
-  heroku apps:create "$APP_NAME" 2>/dev/null || heroku git:remote -a "$APP_NAME"
+  echo "▶ Criando/associando app: $APP_NAME ${TEAM:+(team: $TEAM)}"
+  heroku apps:create "$APP_NAME" $TEAMFLAG || heroku git:remote -a "$APP_NAME"
 else
-  echo "▶ Criando app com nome aleatório..."
-  heroku apps:create
+  echo "▶ Criando app com nome aleatório ${TEAM:+(team: $TEAM)}..."
+  heroku apps:create $TEAMFLAG
 fi
 
 # segredo → Config Vars (nunca no repo). --confirm-less: já estamos no app certo.
