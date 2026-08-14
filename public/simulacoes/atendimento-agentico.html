@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orquestração Agêntica · Banco Digital — como o Orquestrador deriva para os Especialistas</title>
+<style>
+  :root{
+    --ink:#0a2540; --ink2:#123a63; --accent:#00b3ff; --accent2:#0a55f5;
+    --paper:#eaf3fb; --paper2:#dbeafe; --card:#ffffff; --line:#c7ddf0;
+    --n1:#16a34a; --n2:#0a55f5; --n3:#b45309; --mut:#5b7a99;
+    --shadow:0 10px 30px rgba(10,37,64,.10);
+    --shadow2:0 18px 48px rgba(10,37,64,.18);
+    --glow:0 0 0 3px rgba(0,179,255,.28), 0 0 28px rgba(0,179,255,.55);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #f4f9ff 0%, transparent 60%),
+      radial-gradient(1000px 500px at 110% 10%, #eef6ff 0%, transparent 55%),
+      linear-gradient(180deg,#f7fbff 0%, #e9f3fc 100%);
+    min-height:100vh; overflow-x:hidden;
+  }
+  header{padding:58px 30px 6px}
+  h1{font-size:26px;margin:0;letter-spacing:-.5px;font-weight:800}
+  h1 .em{color:var(--accent2)}
+  .sub{color:var(--mut);font-size:14px;margin-top:4px;font-weight:600}
+  .sf-badge{position:absolute;top:20px;right:30px;display:flex;align-items:center;gap:8px;color:var(--accent2);font-weight:800;font-size:15px}
+  .sf-badge .cloud{width:34px;height:22px;background:var(--accent);border-radius:14px;position:relative;box-shadow:0 4px 10px rgba(0,179,255,.4)}
+  .sf-badge .cloud:before,.sf-badge .cloud:after{content:"";position:absolute;background:var(--accent);border-radius:50%}
+  .sf-badge .cloud:before{width:16px;height:16px;left:5px;top:-7px}
+  .sf-badge .cloud:after{width:12px;height:12px;right:5px;top:-4px}
+  .sf-badge .sf-logo{height:30px;width:auto;flex:none}
+
+  /* ---- Controls ---- */
+  .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 30px 6px}
+  .case-btn{
+    border:1.5px solid var(--line);background:var(--card);color:var(--ink);
+    border-radius:12px;padding:9px 13px;font-size:13px;font-weight:700;cursor:pointer;
+    display:flex;align-items:center;gap:8px;transition:.18s;box-shadow:var(--shadow)
+  }
+  .case-btn:hover{transform:translateY(-2px);border-color:var(--accent)}
+  .case-btn.active{border-color:var(--accent2);box-shadow:var(--glow)}
+  .case-btn .lvl{font-size:11px;font-weight:900;padding:2px 7px;border-radius:20px;color:#fff}
+  .lvl.N1{background:var(--n1)} .lvl.N2{background:var(--n2)} .lvl.N3{background:var(--n3)}
+  .case-btn .num{font-size:11px;color:var(--mut);font-weight:800}
+  .runall{margin-left:auto;background:linear-gradient(135deg,var(--accent2),var(--accent));color:#fff;border:none;
+    border-radius:12px;padding:11px 18px;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 8px 20px rgba(10,85,245,.35);transition:.18s}
+  .runall:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(10,85,245,.5)}
+  .reset{background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:11px 14px;font-weight:800;font-size:13px;cursor:pointer;color:var(--ink)}
+
+  /* ---- Stage ---- */
+  .stage{position:relative;display:grid;grid-template-columns:1.05fr .7fr 1.35fr 1.5fr 1fr;gap:14px;
+    padding:14px 30px 30px;align-items:stretch;min-height:560px}
+  .layer{background:rgba(255,255,255,.55);border:1.5px solid var(--line);border-radius:20px;padding:14px 12px;
+    display:flex;flex-direction:column;position:relative;backdrop-filter:blur(3px)}
+  .layer > .lname{font-size:12.5px;font-weight:900;text-transform:uppercase;letter-spacing:.6px;color:var(--ink2);text-align:center;margin-bottom:12px}
+  .layer > .lname small{display:block;font-weight:700;letter-spacing:0;text-transform:none;color:var(--mut);font-size:11px;margin-top:2px}
+  .layer.lit{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,179,255,.25), var(--shadow2);background:rgba(255,255,255,.85)}
+
+  .node{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:11px 12px;margin-bottom:10px;
+    box-shadow:var(--shadow);transition:.25s;position:relative}
+  .node .t{font-weight:800;font-size:13px;display:flex;align-items:center;gap:8px}
+  .node .d{font-size:11.5px;color:var(--mut);margin-top:3px;line-height:1.35}
+  .node .ic{font-size:17px;width:22px;text-align:center}
+  .node.on{border-color:var(--accent2);box-shadow:var(--glow);transform:translateY(-2px)}
+  .node.done{border-color:var(--n1)}
+  .node.done .t:after{content:"✓";margin-left:auto;color:var(--n1);font-weight:900}
+  .node.dim{opacity:.4;filter:saturate(.5)}
+
+  /* Orchestrator control-plane bars */
+  .cplane{background:linear-gradient(180deg,#0e2f57,#0a2540);border-radius:14px;padding:10px;margin-bottom:10px;box-shadow:var(--shadow2)}
+  .cplane .cp-title{color:#bfe6ff;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;text-align:center;margin-bottom:8px}
+  .cbar{background:rgba(255,255,255,.08);color:#eaf6ff;border-radius:8px;padding:6px 10px;font-size:11.5px;font-weight:700;margin:5px 0;
+    border:1px solid rgba(255,255,255,.12);transition:.2s;display:flex;align-items:center;gap:7px}
+  .cbar.pulse{background:linear-gradient(90deg,var(--accent2),var(--accent));border-color:transparent;box-shadow:0 6px 16px rgba(0,179,255,.4)}
+  .cbar .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
+  .cbar.pulse .dot{background:#fff;box-shadow:0 0 8px #fff}
+
+  .triage-verdict{margin-top:8px;background:#fff;border:2px dashed var(--line);border-radius:12px;padding:10px;text-align:center;min-height:64px;
+    display:flex;flex-direction:column;justify-content:center;transition:.25s}
+  .triage-verdict.show{border-color:var(--accent2);border-style:solid;box-shadow:var(--glow)}
+  .triage-verdict .cat{font-weight:900;font-size:14px}
+  .triage-verdict .meta{font-size:11px;color:var(--mut);margin-top:3px;font-weight:700}
+  .triage-verdict .hits{font-size:10.5px;color:var(--accent2);margin-top:4px;font-weight:800}
+
+  .specialist{opacity:.5}
+  .specialist.candidate{opacity:1}
+  .crm-card .row{display:flex;justify-content:space-between;font-size:11.5px;padding:4px 0;border-bottom:1px dashed #e6eef7}
+  .crm-card .row .k{color:var(--mut);font-weight:700}
+  .crm-card .row .v{font-weight:800}
+  .artifact{background:#f5faff;border:1px solid var(--line);border-radius:10px;padding:8px;font-size:11px;line-height:1.4;margin-top:8px;
+    max-height:0;overflow:hidden;transition:max-height .5s ease, padding .3s;padding-top:0;padding-bottom:0}
+  .artifact.show{max-height:260px;padding:8px}
+  .artifact .lab{font-weight:900;color:var(--accent2);font-size:10px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+
+  /* pulse packet */
+  #packet{position:absolute;width:20px;height:20px;border-radius:50%;
+    background:radial-gradient(circle at 35% 35%,#fff,var(--accent) 55%,var(--accent2));
+    box-shadow:0 0 18px 4px rgba(0,179,255,.75);opacity:0;z-index:50;transform:translate(-50%,-50%);pointer-events:none}
+  #packet.go{opacity:1}
+
+  .status{padding:0 30px 26px}
+  .statusbar{background:#0a2540;color:#dcefff;border-radius:14px;padding:12px 16px;font-size:13px;font-weight:700;
+    display:flex;align-items:center;gap:12px;box-shadow:var(--shadow2);min-height:46px}
+  .statusbar .step{color:var(--accent);font-weight:900;background:rgba(0,179,255,.14);padding:3px 10px;border-radius:20px;font-size:11px;letter-spacing:.4px}
+  .trust{margin:8px 30px 0;background:linear-gradient(90deg,#0e2f57,#123a63);color:#cfe9ff;border-radius:12px;text-align:center;
+    padding:8px;font-size:11.5px;font-weight:700;letter-spacing:.3px;border:1px solid rgba(255,255,255,.1)}
+  .trust b{color:#8fd6ff}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;padding:2px 30px 18px;font-size:11.5px;color:var(--mut);font-weight:700}
+  .legend .pill{display:inline-flex;align-items:center;gap:6px}
+  .legend .sw{width:12px;height:12px;border-radius:4px}
+  .foot{padding:4px 30px 30px;color:var(--mut);font-size:11px}
+  .foot code{background:#e7f1fb;padding:1px 6px;border-radius:6px;color:var(--ink2);font-weight:700}
+  @media (max-width:1200px){.stage{grid-template-columns:1fr 1fr;}.status{}}
+  .voltar{position:fixed;top:16px;left:16px;z-index:30;background:rgba(255,255,255,.92);
+    border:1px solid var(--line);border-radius:20px;padding:7px 14px;font-size:12.5px;font-weight:700;
+    color:var(--accent2);text-decoration:none;box-shadow:0 2px 8px rgba(13,27,42,.12);transition:.15s}
+  .voltar:hover{background:#fff;box-shadow:0 6px 16px rgba(13,27,42,.18)}
+  .crm-open{align-items:center;gap:6px;margin-top:12px;font-size:12px;font-weight:800;color:#fff;
+    background:linear-gradient(135deg,var(--accent2),var(--accent));border-radius:9px;padding:8px 13px;
+    text-decoration:none;box-shadow:0 4px 12px rgba(10,85,245,.28);transition:.15s}
+  .crm-open:hover{transform:translateY(-1px);box-shadow:0 7px 18px rgba(10,85,245,.4)}
+  .orgbar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;padding:0 30px 4px;font-size:12px}
+  .orgbar .lbl{color:var(--mut);font-weight:800}
+  .orgbar a{display:inline-flex;align-items:center;gap:5px;color:var(--accent2);font-weight:700;text-decoration:none;
+    border:1px solid var(--line);border-radius:20px;padding:5px 12px;background:rgba(255,255,255,.75);transition:.15s}
+  .orgbar a:hover{border-color:var(--accent);background:#fff}
+</style>
+</head>
+<body>
+<a class="voltar" href="../index.html?aba=3">← Voltar ao Hub</a>
+<div class="sf-badge"><img class="sf-logo" src="../assets/salesforce-logo.png" alt="Salesforce"> Agentforce</div>
+<header>
+  <h1>Orquestração Agêntica — <span class="em">como o Orquestrador deriva para os Especialistas</span></h1>
+  <div class="sub">Banco Digital · jornada Atendimento Agêntico · dados <b>reais</b> da org (6 chamados 00001385–00001390) sobre a Arquitetura de Referência Multi‑Agente</div>
+</header>
+
+<div class="controls" id="controls"></div>
+
+<div class="orgbar">
+  <span class="lbl">🔗 Abrir na org:</span>
+  <a href="https://trailsignup-2979e1c6606a3b.lightning.force.com/lightning/app/SDO_Service_Console" target="_blank" rel="noopener">Service Console</a>
+  <a href="https://trailsignup-2979e1c6606a3b.lightning.force.com/lightning/o/Case/list" target="_blank" rel="noopener">Lista de Casos</a>
+  <span class="lbl" style="font-weight:400">· ou clique um caso e use “Abrir este Caso na org”.</span>
+</div>
+
+<div class="trust">🔒 <b>Trust Layer</b> — Guardrails · Zero‑Data Retention · Toxicity detection · Data masking · Prompt‑injection defense &nbsp;|&nbsp; atravessa todas as camadas</div>
+
+<div class="stage" id="stage">
+  <div class="packet" id="packet"></div>
+
+  <!-- 1 · CHANNEL -->
+  <div class="layer" id="L-channel">
+    <div class="lname">Channel Layer<small>canal com o cliente / regulador</small></div>
+    <div class="node" id="ch-app"><div class="t"><span class="ic">📱</span>Chat do App</div><div class="d">Cliente falando (MIAW · Agentforce ao vivo)</div></div>
+    <div class="node" id="ch-bacen"><div class="t"><span class="ic">🏛️</span>Landing do Bacen</div><div class="d">Reclamação registrada no regulador (RDR)</div></div>
+    <div class="node" id="ch-in" style="margin-top:auto"><div class="t"><span class="ic">📨</span>Reclamação recebida</div><div class="d" id="ch-utter">— escolha um caso acima —</div></div>
+  </div>
+
+  <!-- 2 · MCP -->
+  <div class="layer" id="L-mcp">
+    <div class="lname">MCP Layer<small>ferramentas / ações no CRM</small></div>
+    <div class="node" id="mcp-service"><div class="t"><span class="ic">🧰</span>MCP Server · Service</div><div class="d">Case, Comentários, SLA</div></div>
+    <div class="node" id="mcp-ind"><div class="t"><span class="ic">🏦</span>MCP Server · Industry</div><div class="d">Fraude, Pix/MED, Crédito</div></div>
+    <div class="node" id="mcp-know"><div class="t"><span class="ic">📚</span>MCP Server · Knowledge</div><div class="d">Base normativa (SLA_Bacen)</div></div>
+  </div>
+
+  <!-- 3 · SUPER AGENT / ORCHESTRATOR -->
+  <div class="layer" id="L-orch">
+    <div class="lname">Super Agent Layer<small>SOMA_Orchestrator · N1 · triagem</small></div>
+    <div class="cplane">
+      <div class="cp-title">Enterprise Agentic Control Plane</div>
+      <div class="cbar" id="cp-orch"><span class="dot"></span>Orchestration &amp; Runtime</div>
+      <div class="cbar" id="cp-obs"><span class="dot"></span>Observability</div>
+      <div class="cbar" id="cp-reg"><span class="dot"></span>Agents Catalog / Registry</div>
+      <div class="cbar" id="cp-gov"><span class="dot"></span>Real‑time Governance · SLA</div>
+    </div>
+    <div class="node" id="orch-classify"><div class="t"><span class="ic">🎯</span>Agente de Triagem</div>
+      <div class="d">Classifica o texto vs. regras <code style="font-size:10px">SLA_Bacen__mdt</code> por palavras‑chave</div></div>
+    <div class="triage-verdict" id="verdict">
+      <div class="cat" id="v-cat">aguardando…</div>
+      <div class="meta" id="v-meta"></div>
+      <div class="hits" id="v-hits"></div>
+    </div>
+  </div>
+
+  <!-- 4 · BUSINESS APPS AGENTS / SPECIALISTS -->
+  <div class="layer" id="L-spec">
+    <div class="lname">Business Apps Agents<small>Especialistas acionados (N2 / N3)</small></div>
+    <div class="node specialist" id="sp-N1"><div class="t"><span class="ic">🎧</span>Atendimento N1</div><div class="d">Resolve na linha de frente (autosserviço / KB)</div></div>
+    <div class="node specialist" id="sp-Fraude"><div class="t"><span class="ic">🕵️‍♀️</span>Especialista Fraude/Contestação</div><div class="d">Contestação + bloqueio cautelar</div></div>
+    <div class="node specialist" id="sp-Pix_MED"><div class="t"><span class="ic">💸</span>Especialista Pix/MED</div><div class="d">Mecanismo Especial de Devolução</div></div>
+    <div class="node specialist" id="sp-Credito"><div class="t"><span class="ic">🏷️</span>Especialista Crédito/Consignado</div><div class="d">Revisão de contrato / renegociação</div></div>
+    <div class="node specialist" id="sp-Cartao_Conta"><div class="t"><span class="ic">💳</span>Especialista Cartão/Conta</div><div class="d">Limite · anuidade · bloqueio · cancelamento</div></div>
+    <div class="node specialist" id="sp-TI"><div class="t"><span class="ic">🛠️</span>Help Desk de TI (N3)</div><div class="d">Incidente técnico · retaguarda</div></div>
+  </div>
+
+  <!-- 5 · CRM -->
+  <div class="layer" id="L-crm">
+    <div class="lname">Business Apps · CRM<small>estado real no Salesforce</small></div>
+    <div class="node crm-card" id="crm">
+      <div class="t"><span class="ic">🗂️</span><span id="crm-num">Case —</span></div>
+      <div class="row"><span class="k">Nível</span><span class="v" id="crm-lvl">—</span></div>
+      <div class="row"><span class="k">Estágio</span><span class="v" id="crm-stage">—</span></div>
+      <div class="row"><span class="k">SLA</span><span class="v" id="crm-sla">—</span></div>
+      <div class="row"><span class="k">Canal Slack</span><span class="v" id="crm-slack">—</span></div>
+      <div class="artifact" id="crm-art"><div class="lab">Artefato do especialista · CaseComment real</div><div id="crm-art-body"></div></div>
+      <a class="crm-open" id="crm-open" href="#" target="_blank" rel="noopener" style="display:none">🔗 Abrir este Caso na org →</a>
+    </div>
+    <div class="node" id="crm-slackmsg" style="margin-top:auto"><div class="t"><span class="ic">💬</span>Narração no Slack</div><div class="d" id="crm-narr">— cada transição vira uma fala no canal do chamado —</div></div>
+  </div>
+</div>
+
+<div class="status">
+  <div class="statusbar"><span class="step" id="st-step">PRONTO</span><span id="st-msg">Escolha um chamado acima, ou clique em “Rodar os 6 casos”.</span></div>
+</div>
+
+<div class="legend">
+  <span class="pill"><span class="sw" style="background:var(--n1)"></span>N1 — resolve na linha de frente</span>
+  <span class="pill"><span class="sw" style="background:var(--n2)"></span>N2 — especialista assume (gate p/ desfecho)</span>
+  <span class="pill"><span class="sw" style="background:var(--n3)"></span>N3 — retaguarda de TI</span>
+  <span class="pill">🔑 uma só fonte governa nível + prazo + KB: <code style="font-size:10px">SLA_Bacen__mdt</code></span>
+</div>
+
+<div class="foot">
+  Fluxo real: <code>AbrirCasoBacen</code> (Site, token <code>?k=</code>) → <code>Funil_Evento__e</code> (Triagem) →
+  <code>AtendimentoOrquestrador.triar</code> → <code>ClassificarChamado</code> → especialista (<code>EspecialistaN2</code>/<code>RetaguardaN3</code>) →
+  <code>CaseComment</code> + narração no Slack. Nada mockado: os textos abaixo são os <b>CaseComments verdadeiros</b> gravados na org.
+</div>
+
+<script>
+// ---- ORG REAL (somaOrg) — deep-links que ABREM o registro na org ----
+const ORG = "https://trailsignup-2979e1c6606a3b.lightning.force.com";
+// Ids reais dos 6 Casos na org (Case.Id) — o link abre o proprio registro.
+const CASE_REC = {
+  "00001385":"500ak000031mpz7AAA", "00001386":"500ak000031mpz8AAA",
+  "00001387":"500ak000031mpz9AAA", "00001388":"500ak000031mpzAAAQ",
+  "00001389":"500ak000031mpzBAAQ", "00001390":"500ak000031mpzCAAQ"
+};
+const linkCaso = id => ORG + "/lightning/r/Case/" + (CASE_REC[id]||"") + "/view";
+
+// ---- DADOS REAIS (org somaOrg · 2026-08-07 · casos 00001385–00001390) ----
+const CASES = [
+  { id:"00001385", label:"Atendimento simples", lvl:"N1", cat:"Atendimento_N1",
+    catLabel:"Atendimento Simples (N1)", stage:"Resolvido_N1",
+    sla:"7 dias corridos · SAC (Dec. 11.034/2022)", spec:"N1", mcp:["mcp-service","mcp-know"],
+    utter:"“Preciso da segunda via do extrato e o saldo atualizado. Uma dúvida sobre o status.”",
+    hits:["segunda via","extrato","saldo","duvida","status"],
+    narr:":headphones: *Atendimento N1* resolveu na linha de frente.",
+    artifact:null },
+  { id:"00001386", label:"Fraude / contestação", lvl:"N2", cat:"Fraude",
+    catLabel:"Fraude e Contestação (N2)", stage:"Em_Especialista",
+    sla:"10 dias úteis · Res. BCB 222/2022", spec:"Fraude", mcp:["mcp-service","mcp-ind"],
+    utter:"“Não reconheço uma transação de compra indevida no cartão. Foi golpe, quero a contestação.”",
+    hits:["nao reconheco","transacao","compra indevida","golpe","contestacao","fraude"],
+    narr:":female-detective: *Especialista de Fraude/Contestação (N2)* assumiu: contestação registrada e transação sob análise.",
+    artifact:"[Especialista Fraude/Contestação] Contestação registrada; transação marcada para análise e, se aplicável, bloqueio preventivo. Recomendação (Bacen): bloquear cautelarmente cartão/conta se confirmada a suspeita, abrir a contestação, analisar as transações recentes e responder dentro do prazo (até 10 dias úteis, Res. BCB 222/2022)." },
+  { id:"00001387", label:"Pix não caiu / MED", lvl:"N2", cat:"Pix_MED",
+    catLabel:"Pix e Devolução — MED (N2)", stage:"Em_Especialista",
+    sla:"MED · arranjo Pix (celeridade, sem prazo em horas)", spec:"Pix_MED", mcp:["mcp-service","mcp-ind"],
+    utter:"“Fiz um Pix e o dinheiro não caiu na conta de destino. Quero a devolução dessa transferência (MED).”",
+    hits:["pix","nao caiu","devolucao","transferencia","med"],
+    narr:":money_with_wings: *Especialista Pix/MED (N2)* abriu a contestação MED (Mecanismo Especial de Devolução).",
+    artifact:"[Especialista Pix/MED] Contestação MED aberta (Mecanismo Especial de Devolução). Recomendação (Bacen): acionar o MED — bloqueio cautelar rápido dos recursos e análise da notificação; atuar com celeridade e manter o cliente informado. Próximo passo: análise da operação e acionamento da instituição recebedora." },
+  { id:"00001388", label:"Crédito / consignado", lvl:"N2", cat:"Credito",
+    catLabel:"Crédito e Consignado (N2)", stage:"Em_Especialista",
+    sla:"10 dias úteis · Res. BCB 222/2022", spec:"Credito", mcp:["mcp-service","mcp-ind"],
+    utter:"“Tem um desconto indevido de parcela do meu consignado. Quero renegociação do contrato do empréstimo.”",
+    hits:["desconto indevido","parcela","consignado","renegociacao","contrato","emprestimo","credito"],
+    narr:":label: *Especialista Crédito/Consignado (N2)* encaminhou contrato/oferta para revisão e renegociação.",
+    artifact:"[Especialista Crédito/Consignado] Solicitação encaminhada para revisão do contrato/oferta e, se for o caso, renegociação. Recomendação (Bacen): verificar a autorização e o contrato, suspender descontos contestados enquanto durar a análise, oferecer renegociação quando cabível e responder dentro do prazo (até 10 dias úteis, Res. BCB 222/2022)." },
+  { id:"00001389", label:"Cartão / conta", lvl:"N2", cat:"Cartao_Conta",
+    catLabel:"Cartão, Conta e Cancelamento (N2)", stage:"Em_Especialista",
+    sla:"10 dias úteis · Res. BCB 222/2022", spec:"Cartao_Conta", mcp:["mcp-service","mcp-ind"],
+    utter:"“Minha conta foi bloqueada e cobram anuidade do cartão. Quero cancelar e encerrar conta.”",
+    hits:["conta bloqueada","anuidade","cartao","cancelar","encerrar conta","bloqueio"],
+    narr:":credit_card: *Especialista Cartão/Conta (N2)* em tratamento: limite/anuidade/bloqueio/cancelamento.",
+    artifact:"[Especialista Cartão/Conta] Chamado em tratamento: limite/anuidade/bloqueio/cancelamento conforme o pedido do cliente. Recomendação (Bacen): revisar a origem do bloqueio ou da cobrança, orientar/executar o desbloqueio ou o cancelamento quando pertinente, estornar tarifas indevidas e responder dentro do prazo (até 10 dias úteis, Res. BCB 222/2022)." },
+  { id:"00001390", label:"App fora do ar / TI", lvl:"N3", cat:"TI_App",
+    catLabel:"Falhas no App e Sistema — TI (N3)", stage:"Em_Retaguarda",
+    sla:"10 dias úteis · Res. BCB 222/2022", spec:"TI", mcp:["mcp-service"],
+    utter:"“O aplicativo está fora do ar, não consigo logar, dá erro de instabilidade o tempo todo.”",
+    hits:["app fora do ar","nao consigo logar","login","erro","instabilidade","sistema","aplicativo"],
+    narr:":gear: *Help Desk de TI (N3)* abriu um chamado técnico; a retaguarda está diagnosticando o incidente.",
+    artifact:"[Help Desk de TI] Incidente técnico aberto (severidade Alta). Recomendação (Bacen): abrir chamado técnico para o Help Desk de TI, verificar incidentes/instabilidade em andamento, orientar o cliente sobre contorno e prazo, e responder dentro do prazo (até 10 dias úteis, Res. BCB 222/2022). Próximo passo: diagnóstico da retaguarda de TI e comunicação de status." },
+];
+
+const $ = s=>document.querySelector(s);
+const byId = id=>document.getElementById(id);
+const sleep = ms=>new Promise(r=>setTimeout(r,ms));
+let running=false;
+
+// build case buttons
+const ctr = byId('controls');
+CASES.forEach((c,i)=>{
+  const b=document.createElement('button');
+  b.className='case-btn'; b.dataset.i=i;
+  b.innerHTML=`<span class="lvl ${c.lvl}">${c.lvl}</span><span>${c.label}</span><span class="num">${c.id}</span>`;
+  b.onclick=()=>{ if(!running) runCase(i); };
+  ctr.appendChild(b);
+});
+const runAll=document.createElement('button');
+runAll.className='runall'; runAll.textContent='▶ Rodar os 6 casos';
+runAll.onclick=async()=>{ if(running) return; for(let i=0;i<CASES.length;i++){ await runCase(i);} };
+ctr.appendChild(runAll);
+const rst=document.createElement('button');
+rst.className='reset'; rst.textContent='↺ Limpar'; rst.onclick=()=>{ if(!running) resetAll(); };
+ctr.appendChild(rst);
+
+function resetAll(){
+  document.querySelectorAll('.node,.layer,.cbar').forEach(n=>n.classList.remove('on','done','lit','pulse','dim'));
+  document.querySelectorAll('.specialist').forEach(n=>n.classList.remove('candidate'));
+  document.querySelectorAll('.case-btn').forEach(n=>n.classList.remove('active'));
+  byId('verdict').classList.remove('show');
+  byId('v-cat').textContent='aguardando…'; byId('v-meta').textContent=''; byId('v-hits').textContent='';
+  byId('ch-utter').textContent='— escolha um caso acima —';
+  byId('crm-num').textContent='Case —'; byId('crm-lvl').textContent='—'; byId('crm-stage').textContent='—';
+  byId('crm-sla').textContent='—'; byId('crm-slack').textContent='—';
+  byId('crm-art').classList.remove('show'); byId('crm-art-body').textContent='';
+  byId('crm-open').style.display='none';
+  byId('crm-narr').textContent='— cada transição vira uma fala no canal do chamado —';
+  setStatus('PRONTO','Escolha um chamado acima, ou clique em “Rodar os 6 casos”.');
+}
+function setStatus(step,msg){ byId('st-step').textContent=step; byId('st-msg').innerHTML=msg; }
+
+// move the glowing packet from element A center to element B center
+function centerOf(el){ const s=byId('stage').getBoundingClientRect(); const r=el.getBoundingClientRect();
+  return { x:r.left-s.left+r.width/2, y:r.top-s.top+r.height/2 }; }
+async function flyTo(fromEl,toEl,ms=650){
+  const p=byId('packet'); const a=centerOf(fromEl), b=centerOf(toEl);
+  p.style.transition='none'; p.style.left=a.x+'px'; p.style.top=a.y+'px'; p.classList.add('go');
+  await sleep(20); p.style.transition=`left ${ms}ms cubic-bezier(.5,0,.3,1), top ${ms}ms cubic-bezier(.5,0,.3,1)`;
+  p.style.left=b.x+'px'; p.style.top=b.y+'px'; await sleep(ms);
+}
+
+async function runCase(i){
+  running=true; resetAll();
+  const c=CASES[i];
+  document.querySelectorAll('.case-btn')[i].classList.add('active');
+
+  // 1 — Channel: reclamação entra
+  byId('L-channel').classList.add('lit');
+  byId('ch-bacen').classList.add('on');
+  byId('ch-in').classList.add('on');
+  byId('ch-utter').textContent=c.utter;
+  setStatus('1 · CANAL', `Reclamação chega pela <b>Landing do Bacen</b> · Case <b>${c.id}</b> nasce com o relógio regulatório.`);
+  await sleep(850);
+
+  // 2 — MCP layer lights the servers this case will use
+  byId('ch-bacen').classList.add('done');
+  await flyTo(byId('ch-in'), byId('mcp-service'));
+  byId('L-mcp').classList.add('lit');
+  c.mcp.forEach(id=>byId(id).classList.add('on'));
+  setStatus('2 · MCP', `O orquestrador ganha acesso às ferramentas: <b>${c.mcp.map(m=>({'mcp-service':'Service','mcp-ind':'Industry','mcp-know':'Knowledge'}[m])).join(' · ')}</b>.`);
+  await sleep(750);
+
+  // 3 — Orchestrator: control plane + classify
+  await flyTo(byId('mcp-service'), byId('orch-classify'));
+  byId('L-orch').classList.add('lit');
+  const bars=['cp-orch','cp-reg','cp-gov','cp-obs'];
+  for(const b of bars){ byId(b).classList.add('pulse'); await sleep(180); }
+  byId('orch-classify').classList.add('on');
+  setStatus('3 · ORQUESTRADOR', `<b>SOMA_Orchestrator</b> (N1) lê a reclamação e classifica contra as regras do Banco Central…`);
+  await sleep(700);
+
+  // reveal verdict progressively (keyword hits)
+  byId('verdict').classList.add('show');
+  byId('v-cat').textContent=c.catLabel;
+  byId('v-meta').textContent=`nível ${c.lvl} · ${c.sla}`;
+  let shown=[];
+  for(const h of c.hits){ shown.push(h); byId('v-hits').textContent='palavras‑chave: '+shown.map(x=>'“'+x+'”').join(' '); await sleep(160); }
+  byId('orch-classify').classList.add('done');
+  await sleep(300);
+
+  // 4 — derive to specialist (highlight all, then pick)
+  byId('L-spec').classList.add('lit');
+  document.querySelectorAll('.specialist').forEach(n=>n.classList.add('candidate'));
+  await sleep(250);
+  // dim the losers
+  document.querySelectorAll('.specialist').forEach(n=>{ if(n.id!=='sp-'+c.spec){ n.classList.remove('candidate'); n.classList.add('dim'); }});
+  await flyTo(byId('orch-classify'), byId('sp-'+c.spec), 720);
+  byId('sp-'+c.spec).classList.add('on');
+  const specName = byId('sp-'+c.spec).querySelector('.t').textContent.trim();
+  setStatus('4 · DERIVAÇÃO', `Triagem <b>deriva para o especialista certo</b>: ${specName}. Ninguém roteou à mão.`);
+  await sleep(800);
+
+  // 5 — CRM: write state + artifact + slack narration
+  await flyTo(byId('sp-'+c.spec), byId('crm'), 680);
+  byId('L-crm').classList.add('lit');
+  byId('crm').classList.add('on');
+  byId('crm-num').textContent='Case '+c.id;
+  byId('crm-lvl').textContent=c.lvl;
+  byId('crm-stage').textContent=c.stage;
+  byId('crm-sla').textContent=c.sla;
+  byId('crm-slack').textContent='bacen-'+c.id.slice(-4)+' ✓';
+  if(c.artifact){ byId('crm-art').classList.add('show'); byId('crm-art-body').textContent=c.artifact; }
+  const linkEl=byId('crm-open'); linkEl.href=linkCaso(c.id); linkEl.style.display='inline-flex';
+  byId('sp-'+c.spec).classList.add('done');
+  byId('crm').classList.add('done');
+  byId('crm-slackmsg').classList.add('on');
+  byId('crm-narr').innerHTML = c.narr.replace(/\*(.+?)\*/g,'<b>$1</b>').replace(/:[a-z_]+:/g,'💬');
+  const gate = c.lvl==='N1' ? 'resolvido na linha de frente' : 'especialista assumiu — <b>gate</b> aguardando o desfecho (clique “✅ Caso resolvido” no Slack)';
+  setStatus('5 · CRM + SLACK', `Estado gravado no Case <b>${c.id}</b> (${c.stage}); artefato e narração reais no canal. ${gate}.`);
+  await sleep(c.artifact?1500:1000);
+
+  running=false;
+}
+</script>
+</body>
+</html>

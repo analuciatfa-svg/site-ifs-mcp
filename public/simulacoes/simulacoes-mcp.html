@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<!--
+  simulacoes-mcp.html (Site das IFs MCP) — a JORNADA DE DADOS ROTEADA PELO
+  Salesforce Platform MCP (servidor hospedado headless-360), mostrada AO VIVO.
+
+  O que esta página faz, de verdade (nada mockado):
+    1. chama a ponte /mcp/handshake  → OAuth client_credentials, MCP initialize,
+       tools/list — e desenha o serverInfo, o mcp-session-id e as 4 ferramentas.
+    2. por jornada, chama /mcp/jornada → discover (busca a receita de GraphQL) →
+       describe (traz os passos) → dispatch (executa o GraphQL) e lista os
+       REGISTROS REAIS da org (Lead / Opportunity / Case).
+
+  O segredo do External Client App vive SÓ no servidor (env MCP_CLIENT_*). O
+  navegador nunca vê token nem segredo — só fala com a ponte local. Se a ponte
+  não tiver credencial MCP, a página diz isso com honestidade (nada de fingir).
+
+  Casca visual = mesmos tokens de marca das outras animações do Hub.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulações Reais via MCP · Salesforce Platform MCP (headless-360) ao vivo</title>
+<style>
+  :root{
+    --ink:#0a2540; --ink2:#123a63; --accent:#00b3ff; --accent2:#0a55f5;
+    --paper:#eaf3fb; --paper2:#dbeafe; --card:#ffffff; --line:#c7ddf0;
+    --live:#16a34a; --ref:#b45309; --mut:#5b7a99;
+    --shadow:0 10px 30px rgba(10,37,64,.10);
+    --shadow2:0 18px 48px rgba(10,37,64,.18);
+    --glow:0 0 0 3px rgba(0,179,255,.28), 0 0 28px rgba(0,179,255,.55);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%}
+  body{
+    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #f4f9ff 0%, transparent 60%),
+      radial-gradient(1000px 500px at 110% 10%, #eef6ff 0%, transparent 55%),
+      linear-gradient(180deg,#f7fbff 0%, #e9f3fc 100%);
+    min-height:100vh; overflow-x:hidden;
+  }
+  a{color:inherit}
+  header{padding:56px 30px 6px;position:relative}
+  h1{font-size:26px;margin:0;letter-spacing:-.5px;font-weight:800}
+  h1 .em{color:var(--accent2)}
+  .sub{color:var(--mut);font-size:14px;margin-top:6px;font-weight:600;max-width:104ch;line-height:1.55}
+  .sf-badge{position:absolute;top:18px;right:30px;display:flex;align-items:center;gap:8px;color:var(--accent2);font-weight:800;font-size:15px}
+  .sf-badge .sf-logo{height:28px;width:auto}
+  .back{display:inline-flex;align-items:center;gap:7px;margin:14px 30px 0;font-size:12.5px;font-weight:800;
+    color:var(--accent2);text-decoration:none;border:1.5px solid var(--line);background:var(--card);
+    border-radius:11px;padding:8px 12px;box-shadow:var(--shadow)}
+  .back:hover{border-color:var(--accent)}
+
+  .wrap{padding:14px 30px 60px;max-width:1180px}
+
+  /* ---- Cartão de conexão MCP ---- */
+  .conn{background:linear-gradient(120deg,#0e2f57,#123a63);color:#e9f6ff;border-radius:18px;
+    padding:18px 20px;box-shadow:var(--shadow2);position:relative;overflow:hidden}
+  .conn::after{content:"";position:absolute;right:-40px;top:-40px;width:220px;height:220px;
+    background:radial-gradient(circle,rgba(0,179,255,.35),transparent 65%);pointer-events:none}
+  .conn-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .conn-dot{width:11px;height:11px;border-radius:50%;background:#64748b;flex:none;box-shadow:0 0 0 0 rgba(22,163,74,.6)}
+  .conn.on .conn-dot{background:#22e07a;animation:pulse 1.8s infinite}
+  .conn.err .conn-dot{background:#f87171}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,224,122,.55)}70%{box-shadow:0 0 0 12px rgba(34,224,122,0)}100%{box-shadow:0 0 0 0 rgba(34,224,122,0)}}
+  .conn h2{font-size:16px;margin:0;font-weight:900;letter-spacing:-.2px}
+  .conn .st{margin-left:auto;font-size:11px;font-weight:900;padding:5px 11px;border-radius:20px;
+    background:rgba(255,255,255,.14);letter-spacing:.4px}
+  .conn.on .st{background:rgba(34,224,122,.22);color:#c6ffe0}
+  .conn.err .st{background:rgba(248,113,113,.22);color:#ffd9d9}
+  .conn-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:14px}
+  .kv{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 12px}
+  .kv .k{font-size:10.5px;font-weight:800;color:#8fd6ff;letter-spacing:.4px;text-transform:uppercase}
+  .kv .v{font-size:13px;font-weight:700;margin-top:3px;word-break:break-word;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .tools{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+  .tool{font-size:11px;font-weight:800;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.2);
+    color:#eaf6ff;border-radius:16px;padding:5px 11px;display:inline-flex;gap:6px;align-items:center}
+  .tool code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;color:#8fd6ff}
+
+  /* ---- Tira de protocolo (os passos do handshake + jornada) ---- */
+  .flow{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 4px;align-items:stretch}
+  .step{flex:1 1 150px;min-width:150px;background:var(--card);border:1.5px solid var(--line);border-radius:14px;
+    padding:11px 13px;box-shadow:var(--shadow);position:relative;opacity:.55;transition:.25s}
+  .step.on{opacity:1;border-color:var(--accent2);box-shadow:var(--glow)}
+  .step.err{opacity:1;border-color:#f0b4b4;box-shadow:0 0 0 3px rgba(248,113,113,.2)}
+  .step .n{font-size:10px;font-weight:900;color:var(--mut);letter-spacing:.5px}
+  .step h4{margin:3px 0 0;font-size:13px;font-weight:900;color:var(--ink2)}
+  .step .d{font-size:11px;color:var(--mut);margin-top:4px;font-weight:600;line-height:1.4;min-height:28px}
+  .step .tick{position:absolute;top:9px;right:11px;font-size:13px;font-weight:900;color:var(--live)}
+
+  /* ---- Seletor de jornada ---- */
+  .jnav{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:18px 0 4px}
+  .jbtn{border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;
+    padding:10px 15px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;
+    transition:.18s;box-shadow:var(--shadow)}
+  .jbtn:hover{transform:translateY(-2px);border-color:var(--accent)}
+  .jbtn.active{border-color:var(--accent2);box-shadow:var(--glow)}
+  .jbtn .ic{font-size:16px}
+  .jbtn[disabled]{opacity:.5;cursor:not-allowed;transform:none}
+
+  /* ---- Trace do dispatch + registros ---- */
+  .panel-out{margin-top:16px;display:grid;grid-template-columns:1fr;gap:14px}
+  .box{background:var(--card);border:1.5px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+  .box-h{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .box-h h3{margin:0;font-size:14px;font-weight:900;color:var(--ink2)}
+  .box-h .pill{margin-left:auto;font-size:10.5px;font-weight:900;padding:4px 10px;border-radius:16px;background:#eef4fb;color:var(--ink2);border:1px solid var(--line)}
+  .box-h .pill.live{background:#eefaf1;border-color:#bfe6cd;color:#0f7a3d}
+  .box-b{padding:14px 16px}
+  .kvrow{font-size:12px;color:var(--ink);margin:3px 0;font-family:ui-monospace,Menlo,Consolas,monospace}
+  .kvrow b{color:var(--accent2)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #e7f0f9}
+  th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);font-weight:900}
+  td{color:var(--ink)}
+  tr:hover td{background:#f6fbff}
+  .stg{font-size:11px;font-weight:800;padding:2px 9px;border-radius:14px;background:#eef4fb;color:var(--ink2);border:1px solid var(--line);display:inline-block}
+  .stg.won{background:#eefaf1;border-color:#bfe6cd;color:#0f7a3d}
+  .msg{font-size:12.5px;color:var(--mut);font-weight:700;padding:6px 0}
+  .msg.err{color:#b91c1c}
+  .empty{color:var(--mut);font-weight:700;font-size:12.5px;padding:8px 0}
+
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin:14px 0 0;font-size:11.5px;color:var(--mut);font-weight:700}
+  .legend .p{display:inline-flex;align-items:center;gap:7px}
+  .badge{font-size:10px;font-weight:900;padding:2px 9px;border-radius:20px;color:#fff;letter-spacing:.4px}
+  .badge.live{background:var(--live)} .badge.ref{background:var(--ref)}
+  .foot{color:var(--mut);font-size:11.5px;margin-top:22px;line-height:1.55;max-width:104ch}
+  .foot code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;background:#eef4fb;border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+</style>
+</head>
+<body>
+  <div class="sf-badge">
+    <img class="sf-logo" src="https://trailsignup-2979e1c6606a3b.my.salesforce.com/img/logo190.svg" alt="Salesforce" onerror="this.style.display='none'">
+    Salesforce Platform MCP
+  </div>
+  <header>
+    <h1>Simulações reais via <span class="em">MCP</span></h1>
+    <p class="sub">As mesmas jornadas de dados da aba “Simulações Reais”, agora roteadas pelo
+      <b>Salesforce Platform MCP</b> — o servidor MCP <b>hospedado pela própria Salesforce</b> (<code style="font-family:ui-monospace,Menlo,Consolas,monospace">headless-360</code>),
+      não o MuleSoft Agent Fabric. O handshake e cada chamada acontecem <b>ao vivo</b> na <code style="font-family:ui-monospace,Menlo,Consolas,monospace">somaOrg</code>:
+      <b>OAuth → initialize → discover → describe → dispatch → dados reais</b>. O segredo do app fica só no servidor; o navegador nunca o vê.</p>
+  </header>
+  <a class="back" href="../index.html?aba=4">← Voltar ao Hub (Simulações Reais MCP)</a>
+
+  <div class="wrap">
+
+    <!-- CARTÃO DE CONEXÃO — acende com o handshake real -->
+    <div class="conn" id="conn">
+      <div class="conn-top">
+        <span class="conn-dot"></span>
+        <h2>Conexão MCP</h2>
+        <span class="st" id="connSt">conectando…</span>
+      </div>
+      <div class="conn-grid" id="connGrid"></div>
+      <div class="tools" id="connTools"></div>
+    </div>
+
+    <!-- TIRA DE PROTOCOLO -->
+    <div class="flow" id="flow">
+      <div class="step" data-k="oauth"><div class="n">PASSO 1</div><h4>OAuth 2.0</h4><div class="d">client_credentials → token com escopo <code>mcp_api</code></div><span class="tick" style="display:none">✓</span></div>
+      <div class="step" data-k="initialize"><div class="n">PASSO 2</div><h4>initialize</h4><div class="d">abre a sessão MCP (mcp-session-id)</div><span class="tick" style="display:none">✓</span></div>
+      <div class="step" data-k="tools/list"><div class="n">PASSO 3</div><h4>tools/list</h4><div class="d">discover · describe · dispatch · dispatch_readonly</div><span class="tick" style="display:none">✓</span></div>
+      <div class="step" data-k="discover"><div class="n">PASSO 4</div><h4>discover</h4><div class="d">acha a receita de GraphQL por busca semântica</div><span class="tick" style="display:none">✓</span></div>
+      <div class="step" data-k="describe"><div class="n">PASSO 5</div><h4>describe</h4><div class="d">traz os passos e o path pronto p/ dispatch</div><span class="tick" style="display:none">✓</span></div>
+      <div class="step" data-k="dispatch"><div class="n">PASSO 6</div><h4>dispatch</h4><div class="d">executa o GraphQL e lê os registros da org</div><span class="tick" style="display:none">✓</span></div>
+    </div>
+
+    <!-- SELETOR DE JORNADA -->
+    <div class="jnav">
+      <span style="font-weight:800;font-size:12.5px;color:var(--mut)">Rodar jornada via MCP:</span>
+      <button class="jbtn active" data-j="leads"><span class="ic">🏢</span> Funil PME — Leads</button>
+      <button class="jbtn" data-j="consignado"><span class="ic">🏷️</span> Consignado — Opportunity</button>
+      <button class="jbtn" data-j="atendimento"><span class="ic">🛡️</span> Atendimento — Case</button>
+    </div>
+
+    <!-- SAÍDA: trace + registros -->
+    <div class="panel-out">
+      <div class="box">
+        <div class="box-h">
+          <h3 id="traceH">discover → describe → dispatch</h3>
+          <span class="pill" id="tracePill">aguardando</span>
+        </div>
+        <div class="box-b" id="traceB"><div class="empty">Escolha uma jornada acima para executá-la via MCP.</div></div>
+      </div>
+      <div class="box">
+        <div class="box-h">
+          <h3 id="recH">Registros reais da org</h3>
+          <span class="pill live" id="recPill" style="display:none">● dados ao vivo</span>
+        </div>
+        <div class="box-b" id="recB"><div class="empty">Os registros aparecem aqui depois do dispatch.</div></div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span class="p"><span class="badge live">● AO VIVO</span> chamada real ao MCP + dados reais da org</span>
+      <span class="p"><span class="badge ref">○ CURADO</span> o MCP roteia só rotas curadas (GraphQL sim; SOQL cru e Apex REST custom → não)</span>
+    </div>
+
+    <p class="foot">
+      Honestidade técnica: o Salesforce Platform MCP é um <b>roteador curado</b>, não um proxy de API cru. A rota
+      <code>/services/data/vXX/graphql</code> é roteável (lê e grava Lead/Case/Opportunity via UIAPI); SOQL cru
+      (<code>/query?q=</code>) e Apex REST custom retornam <code>ROUTE_NOT_FOUND</code> — por isso as jornadas de dados
+      aqui vão por <b>GraphQL</b>, não por redirect. Autenticação: <b>OAuth 2.0 client_credentials</b> por um
+      <i>External Client App</i>; o token tem escopo <code>mcp_api</code>. Este painel fala com a ponte local
+      (<code id="apiFoot">http://localhost:8795</code>), que mantém o segredo no servidor. As conversas (chat do app)
+      seguem no Agentforce via MIAW — não passam pelo MCP.
+    </p>
+  </div>
+
+<script>
+// ---------------------------------------------------------------------------
+// Onde falar MCP (o servidor guarda o segredo). Resolução inteligente:
+//   1) ?api=<url> ou ?porta=<n>  → override explícito (tem prioridade)
+//   2) em produção (não-localhost) → MESMA ORIGEM: o próprio app serve /mcp/*
+//   3) em dev (localhost/127.*)    → a ponte local dedicada em :8795
+// Assim a mesma página funciona no Heroku (HTTPS, mesma origem, sem CORS) e no
+// desenvolvimento (site numa porta, ponte na 8795).
+// ---------------------------------------------------------------------------
+const qs = new URLSearchParams(location.search);
+const isLocal = /^(localhost|127\.|0\.0\.0\.0)/.test(location.hostname) || location.protocol === 'file:';
+let API;
+if (qs.get('api'))        API = qs.get('api');
+else if (qs.get('porta')) API = 'http://localhost:' + qs.get('porta');
+else if (!isLocal)        API = location.origin;          // produção: mesmo domínio
+else                      API = 'http://localhost:8795';  // dev: ponte local
+API = API.replace(/\/$/,'');
+document.getElementById('apiFoot').textContent = API;
+
+// POST "simples" (text/plain evita o preflight CORS que a ponte não trata).
+async function post(path, body){
+  const r = await fetch(API + path, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=UTF-8'},
+    body: JSON.stringify(body||{})
+  });
+  const t = await r.text();
+  try { return {status:r.status, data: JSON.parse(t)}; }
+  catch(e){ return {status:r.status, data:{erro:'resposta não-JSON: '+t.slice(0,200)}}; }
+}
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function stepState(k, state){ // state: 'on' | 'err' | ''
+  const el = document.querySelector('.step[data-k="'+k+'"]');
+  if(!el) return;
+  el.classList.remove('on','err');
+  if(state) el.classList.add(state);
+  const tick = el.querySelector('.tick');
+  if(tick) tick.style.display = (state==='on') ? 'block' : 'none';
+}
+
+// --- 1) HANDSHAKE ao carregar -------------------------------------------------
+async function handshake(){
+  const conn = document.getElementById('conn');
+  const st = document.getElementById('connSt');
+  try{
+    const {status, data} = await post('/mcp/handshake', {});
+    if(status!==200 || !data.ok){
+      conn.classList.add('err'); st.textContent = 'sem conexão';
+      document.getElementById('connGrid').innerHTML =
+        '<div class="kv"><div class="k">Motivo</div><div class="v">'+esc(data.erro||('HTTP '+status))+'</div></div>';
+      ['oauth','initialize','tools/list'].forEach(k=>stepState(k,'err'));
+      return false;
+    }
+    conn.classList.add('on'); st.textContent = 'ao vivo';
+    const si = data.serverInfo||{};
+    document.getElementById('connGrid').innerHTML = [
+      ['Servidor MCP', (si.name||'—')+' v'+(si.version||'—')],
+      ['Endpoint', data.endpoint||'—'],
+      ['Org', data.instanceUrl||'—'],
+      ['Escopo do token', data.scope||'—'],
+      ['mcp-session-id', (data.sessionId||'—').slice(0,18)+'…'],
+    ].map(([k,v])=>'<div class="kv"><div class="k">'+esc(k)+'</div><div class="v">'+esc(v)+'</div></div>').join('');
+    document.getElementById('connTools').innerHTML =
+      (data.tools||[]).map(t=>'<span class="tool">🛠 <code>'+esc(t.name)+'</code></span>').join('');
+    // acende os 3 passos do handshake
+    (data.trilha||[]).forEach(p=>{ if(p.ok) stepState(p.passo,'on'); });
+    return true;
+  }catch(e){
+    conn.classList.add('err'); st.textContent = 'ponte offline';
+    document.getElementById('connGrid').innerHTML =
+      '<div class="kv"><div class="k">Erro</div><div class="v">Não consegui falar com a ponte em '+esc(API)+
+      '. Suba a ponte MCP e recarregue.</div></div>';
+    return false;
+  }
+}
+
+// --- 2) JORNADA por clique ----------------------------------------------------
+const OBJ_META = {
+  Lead:        {cols:['Name','Company','Status','Email'], h:'Leads reais (Funil PME)'},
+  Opportunity: {cols:['Name','StageName','Amount'],       h:'Opportunities reais (Consignado)'},
+  Case:        {cols:['CaseNumber','Subject','Status','Origin'], h:'Cases reais (Atendimento)'},
+};
+function renderTrace(trilha){
+  const b = document.getElementById('traceB');
+  if(!trilha || !trilha.length){ b.innerHTML='<div class="empty">Sem trilha.</div>'; return; }
+  b.innerHTML = trilha.map(p=>{
+    const d = p.detalhe||{};
+    let extra = '';
+    if(p.passo==='discover'){
+      const esc2 = (d.escolhida||'—');
+      extra = '<div class="kvrow">query: <b>'+esc(d.query)+'</b></div>'+
+              '<div class="kvrow">receita escolhida: <b>'+esc(esc2)+'</b></div>'+
+              (Array.isArray(d.cards)? '<div class="kvrow">candidatas: '+d.cards.map(c=>esc(c.sor_id)+' ('+(c.score!=null?Number(c.score).toFixed(2):'—')+')').join(' · ')+'</div>':'');
+    } else if(p.passo==='describe'){
+      extra = '<div class="kvrow">sor_id: <b>'+esc(d.sor_id)+'</b></div>'+
+              '<div class="kvrow">path: <b>'+esc(d.path)+'</b></div>'+
+              (Array.isArray(d.steps)?'<div class="kvrow">passos: '+d.steps.map(s=>esc(s.id)).join(' · ')+'</div>':'');
+    } else if(p.passo==='dispatch'){
+      extra = '<div class="kvrow">tool: <b>'+esc(d.tool)+'</b> · '+esc(d.method)+' <b>'+esc(d.url)+'</b></div>'+
+              '<div class="kvrow">HTTP <b>'+esc(d.status_api)+'</b></div>'+
+              (d.erro?'<div class="msg err">'+esc(d.erro)+'</div>':'');
+    }
+    return '<div style="margin:2px 0 12px">'+
+      '<div style="font-weight:900;color:'+(p.ok?'var(--live)':'#b91c1c')+';font-size:12.5px">'+
+        (p.ok?'✓ ':'✗ ')+esc(p.titulo)+'</div>'+extra+'</div>';
+  }).join('');
+}
+function renderRecords(obj, registros, erro){
+  const b = document.getElementById('recB');
+  const pill = document.getElementById('recPill');
+  const h = document.getElementById('recH');
+  const meta = OBJ_META[obj] || {cols:[], h:'Registros'};
+  h.textContent = meta.h;
+  if(erro){ pill.style.display='none'; b.innerHTML='<div class="msg err">'+esc(erro)+'</div>'; return; }
+  if(!registros || !registros.length){ pill.style.display='none'; b.innerHTML='<div class="empty">Nenhum registro retornado.</div>'; return; }
+  pill.style.display='inline-block';
+  const cols = meta.cols;
+  const head = '<tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr>';
+  const rows = registros.map(r=>'<tr>'+cols.map(c=>{
+    let v = r[c];
+    if(c==='Amount' && v!=null) v = 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2});
+    if(c==='StageName'){ const won=String(v).toLowerCase().includes('won'); return '<td><span class="stg'+(won?' won':'')+'">'+esc(v)+'</span></td>'; }
+    return '<td>'+esc(v==null?'—':v)+'</td>';
+  }).join('')+'</tr>').join('');
+  b.innerHTML = '<table>'+head+rows+'</table>';
+}
+
+let rodando=false;
+async function rodarJornada(j){
+  if(rodando) return; rodando=true;
+  document.querySelectorAll('.jbtn').forEach(x=>{ x.classList.toggle('active', x.dataset.j===j); x.disabled=true; });
+  ['discover','describe','dispatch'].forEach(k=>stepState(k,'')); // reset dos passos 4-6
+  document.getElementById('tracePill').textContent='executando…';
+  document.getElementById('traceB').innerHTML='<div class="msg">discover → describe → dispatch no MCP…</div>';
+  document.getElementById('recB').innerHTML='<div class="empty">Aguardando dispatch…</div>';
+  document.getElementById('recPill').style.display='none';
+  try{
+    const {status, data} = await post('/mcp/jornada', {jornada:j});
+    renderTrace(data.trilha);
+    (data.trilha||[]).forEach(p=>stepState(p.passo, p.ok?'on':'err'));
+    document.getElementById('tracePill').textContent = data.ok ? '✓ concluído' : '✗ falhou';
+    document.getElementById('tracePill').className = 'pill'+(data.ok?' live':'');
+    renderRecords(data.obj, data.registros, data.erro);
+  }catch(e){
+    document.getElementById('tracePill').textContent='✗ ponte offline';
+    document.getElementById('traceB').innerHTML='<div class="msg err">Não consegui falar com a ponte em '+esc(API)+'.</div>';
+  }finally{
+    document.querySelectorAll('.jbtn').forEach(x=>x.disabled=false);
+    rodando=false;
+  }
+}
+
+document.querySelectorAll('.jbtn').forEach(btn=>{
+  btn.addEventListener('click', ()=>rodarJornada(btn.dataset.j));
+});
+
+// arranque: handshake → primeira jornada automática
+(async function(){
+  const ok = await handshake();
+  if(ok) rodarJornada('leads');
+})();
+</script>
+</body>
+</html>

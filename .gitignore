@@ -1,0 +1,6 @@
+.DS_Store
+*.log
+__pycache__/
+*.pyc
+# nunca versionar segredo — ele vive só nas Config Vars do Heroku
+.env

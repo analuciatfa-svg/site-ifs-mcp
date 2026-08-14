@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<!--
+  atendimento-arquitetura-alvo.html (Site das IFs V2) — "Arquitetura-alvo" da
+  jornada de ATENDIMENTO. Mostra como a jornada evolui com Super Agent /
+  Control Plane (MuleSoft Agent Fabric), MCP Servers e A2A com Amazon Bedrock.
+
+  REGRA DE OURO (honestidade — igual ao detalhe-tecnico):
+   ● AO VIVO   = existe HOJE na org (canal MIAW/Bacen, agentes REAIS, ações Apex,
+                 Case/CaseComment/Slack). Nomes verificados no metadata.
+   ○ VISÃO     = arquitetura-alvo, NÃO no ar nesta org (Control Plane, MCP Servers,
+                 A2A/Bedrock). Confirmado read-only: sem licença MuleSoft, sem
+                 endpoint MCP, sem credencial Bedrock nesta org.
+  Não substitui nada: é um botão a mais no card. As animações de negócio e o
+  detalhe-tecnico continuam intactos. Mesma gramática visual do atendimento-agentico.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atendimento · Arquitetura-alvo — Super Agent / Control Plane · MCP · A2A · Model Proxy (Bedrock como LLM)</title>
+<style>
+  :root{
+    --ink:#0a2540; --ink2:#123a63; --accent:#00b3ff; --accent2:#0a55f5;
+    --paper:#eaf3fb; --paper2:#dbeafe; --card:#ffffff; --line:#c7ddf0;
+    --live:#16a34a; --vision:#b45309; --a2a:#7c3aed; --mut:#5b7a99;
+    --shadow:0 10px 30px rgba(10,37,64,.10);
+    --shadow2:0 18px 48px rgba(10,37,64,.18);
+    --glow:0 0 0 3px rgba(0,179,255,.28), 0 0 28px rgba(0,179,255,.55);
+    --glow-v:0 0 0 3px rgba(180,83,9,.25), 0 0 26px rgba(180,83,9,.45);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%}
+  body{
+    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #f4f9ff 0%, transparent 60%),
+      radial-gradient(1000px 500px at 110% 10%, #eef6ff 0%, transparent 55%),
+      linear-gradient(180deg,#f7fbff 0%, #e9f3fc 100%);
+    min-height:100vh; overflow-x:hidden;
+  }
+  header{padding:58px 30px 6px}
+  h1{font-size:26px;margin:0;letter-spacing:-.5px;font-weight:800}
+  h1 .em{color:var(--accent2)}
+  .sub{color:var(--mut);font-size:14px;margin-top:4px;font-weight:600;max-width:112ch;line-height:1.5}
+  .sf-badge{position:absolute;top:20px;right:30px;display:flex;align-items:center;gap:8px;color:var(--accent2);font-weight:800;font-size:15px}
+  .sf-badge .sf-logo{height:30px;width:auto;flex:none}
+
+  /* ---- Aviso de visão (honestidade) ---- */
+  .vision-note{margin:14px 30px 0;background:linear-gradient(90deg,#fff7ed,#fffaf3);border:1.5px solid #f6c88a;
+    border-radius:12px;padding:10px 16px;font-size:12.5px;font-weight:700;color:#8a4b09;display:flex;gap:10px;align-items:flex-start;line-height:1.45}
+  .vision-note .k{font-size:16px;flex:none}
+  .vision-note b{color:#b45309}
+
+  /* ---- Controls ---- */
+  .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 30px 6px}
+  .runall{background:linear-gradient(135deg,var(--accent2),var(--accent));color:#fff;border:none;
+    border-radius:12px;padding:11px 18px;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 8px 20px rgba(10,85,245,.35);transition:.18s}
+  .runall:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(10,85,245,.5)}
+  .runall:disabled{opacity:.5;cursor:default;transform:none}
+  .reset{background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:11px 14px;font-weight:800;font-size:13px;cursor:pointer;color:var(--ink)}
+  .cpf-tag{margin-left:auto;font-size:12.5px;color:var(--mut);font-weight:700;display:flex;align-items:center;gap:7px}
+  .cpf-tag b{color:var(--ink2)}
+
+  /* ---- Legenda ---- */
+  .legend{display:flex;gap:16px;flex-wrap:wrap;padding:6px 30px 2px;font-size:12px;color:var(--mut);font-weight:700}
+  .legend .p{display:inline-flex;align-items:center;gap:7px}
+  .badge{font-size:10px;font-weight:900;padding:2px 8px;border-radius:20px;color:#fff;letter-spacing:.3px;white-space:nowrap}
+  .badge.live{background:var(--live)}
+  .badge.vision{background:var(--vision)}
+
+  /* ---- Stage ---- */
+  .stage{position:relative;display:grid;grid-template-columns:1fr 1.15fr 1.3fr 1.05fr 1.1fr;gap:13px;
+    padding:14px 30px 20px;align-items:stretch;min-height:560px}
+  .layer{background:rgba(255,255,255,.55);border:1.5px solid var(--line);border-radius:20px;padding:13px 11px;
+    display:flex;flex-direction:column;position:relative;backdrop-filter:blur(3px)}
+  .layer > .lname{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:var(--ink2);text-align:center;margin-bottom:4px}
+  .layer > .lname small{display:block;font-weight:700;letter-spacing:0;text-transform:none;color:var(--mut);font-size:10.5px;margin-top:2px}
+  .layer .lbadge{display:block;text-align:center;margin:0 auto 10px;width:fit-content}
+  .layer.lit{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,179,255,.25), var(--shadow2);background:rgba(255,255,255,.85)}
+  .layer.vision{border-style:dashed;border-color:#e0b483}
+  .layer.vision.lit{border-color:var(--vision);box-shadow:0 0 0 2px rgba(180,83,9,.22), var(--shadow2);background:linear-gradient(180deg,rgba(255,247,237,.9),rgba(255,255,255,.85))}
+
+  .node{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:10px 11px;margin-bottom:9px;
+    box-shadow:var(--shadow);transition:.25s;position:relative}
+  .node .t{font-weight:800;font-size:12.5px;display:flex;align-items:center;gap:8px}
+  .node .d{font-size:11px;color:var(--mut);margin-top:3px;line-height:1.35}
+  .node .ic{font-size:16px;width:21px;text-align:center}
+  .node code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:10px;background:#eef4fb;border-radius:4px;padding:1px 4px;color:var(--ink2)}
+  .node.on{border-color:var(--accent2);box-shadow:var(--glow);transform:translateY(-2px)}
+  .node.on.vis{border-color:var(--vision);box-shadow:var(--glow-v)}
+  .node.done{border-color:var(--live)}
+  .node.done .t:after{content:"✓";margin-left:auto;color:var(--live);font-weight:900}
+  .node.dim{opacity:.4;filter:saturate(.5)}
+  .node .tinybadge{position:absolute;top:8px;right:9px;font-size:9px;font-weight:900;padding:1px 7px;border-radius:20px;color:#fff;letter-spacing:.3px}
+  .node .tinybadge.live{background:var(--live)}
+  .node .tinybadge.vision{background:var(--vision)}
+  .node .tt{padding-right:52px}
+
+  /* Control-plane bars */
+  .cplane{background:linear-gradient(180deg,#3b1d7a,#2a1560);border-radius:14px;padding:10px;margin-bottom:9px;box-shadow:var(--shadow2)}
+  .cplane .cp-title{color:#e5d5ff;font-size:10.5px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;text-align:center;margin-bottom:8px}
+  .cbar{background:rgba(255,255,255,.08);color:#f2eaff;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;margin:5px 0;
+    border:1px solid rgba(255,255,255,.14);transition:.2s;display:flex;align-items:center;gap:7px}
+  .cbar.pulse{background:linear-gradient(90deg,var(--a2a),#a855f7);border-color:transparent;box-shadow:0 6px 16px rgba(124,58,237,.45)}
+  .cbar .dot{width:7px;height:7px;border-radius:50%;background:#c4a5ff;flex:none}
+  .cbar.pulse .dot{background:#fff;box-shadow:0 0 8px #fff}
+
+  .verdict{margin-top:6px;background:#fff;border:2px dashed var(--line);border-radius:12px;padding:9px;text-align:center;min-height:54px;
+    display:flex;flex-direction:column;justify-content:center;transition:.25s}
+  .verdict.show{border-color:var(--a2a);border-style:solid;box-shadow:var(--glow-v)}
+  .verdict .cat{font-weight:900;font-size:13px}
+  .verdict .meta{font-size:10.5px;color:var(--mut);margin-top:3px;font-weight:700}
+
+  .specialist{opacity:.55}
+  .specialist.candidate{opacity:1}
+
+  /* A2A / Bedrock card */
+  .a2a-card{background:linear-gradient(160deg,#faf5ff,#fff);border-color:#e4d3fb}
+  .a2a-card .t{color:#6b21a8}
+  .a2a-score{margin-top:8px;background:#f5edff;border:1px solid #e4d3fb;border-radius:10px;padding:7px 9px;font-size:11px;font-weight:800;color:#6b21a8;
+    max-height:0;overflow:hidden;transition:max-height .5s,padding .3s;padding-top:0;padding-bottom:0}
+  .a2a-score.show{max-height:120px;padding:7px 9px}
+
+  /* CRM card */
+  .crm-card .row{display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:1px dashed #e6eef7}
+  .crm-card .row .k{color:var(--mut);font-weight:700}
+  .crm-card .row .v{font-weight:800}
+  .crm-card .row .v.hl{color:var(--accent2)}
+  .artifact{background:#f5faff;border:1px solid var(--line);border-radius:10px;padding:8px;font-size:10.5px;line-height:1.4;margin-top:8px;
+    max-height:0;overflow:hidden;transition:max-height .5s ease, padding .3s;padding-top:0;padding-bottom:0}
+  .artifact.show{max-height:240px;padding:8px}
+  .artifact .lab{font-weight:900;color:var(--accent2);font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+
+  /* packet */
+  #packet{position:absolute;width:20px;height:20px;border-radius:50%;
+    background:radial-gradient(circle at 35% 35%,#fff,var(--accent) 55%,var(--accent2));
+    box-shadow:0 0 18px 4px rgba(0,179,255,.75);opacity:0;z-index:50;transform:translate(-50%,-50%);pointer-events:none}
+  #packet.go{opacity:1}
+  #packet.vis{background:radial-gradient(circle at 35% 35%,#fff,#a855f7 55%,var(--a2a));box-shadow:0 0 18px 4px rgba(124,58,237,.7)}
+
+  .status{padding:0 30px 8px}
+  .statusbar{background:#0a2540;color:#dcefff;border-radius:14px;padding:12px 16px;font-size:13px;font-weight:700;
+    display:flex;align-items:center;gap:12px;box-shadow:var(--shadow2);min-height:46px}
+  .statusbar .step{color:var(--accent);font-weight:900;background:rgba(0,179,255,.14);padding:3px 10px;border-radius:20px;font-size:11px;letter-spacing:.4px}
+  .statusbar .step.vis{color:#d9b8ff;background:rgba(124,58,237,.22)}
+  .trust{margin:8px 30px 0;background:linear-gradient(90deg,#0e2f57,#123a63);color:#cfe9ff;border-radius:12px;text-align:center;
+    padding:8px;font-size:11.5px;font-weight:700;letter-spacing:.3px;border:1px solid rgba(255,255,255,.1)}
+  .trust b{color:#8fd6ff}
+  .orgbar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;padding:12px 30px 4px;font-size:12px}
+  .orgbar .lbl{color:var(--mut);font-weight:800}
+  .orgbar a{display:inline-flex;align-items:center;gap:5px;color:var(--accent2);font-weight:700;text-decoration:none;
+    border:1px solid var(--line);border-radius:20px;padding:5px 12px;background:rgba(255,255,255,.75);transition:.15s}
+  .orgbar a:hover{border-color:var(--accent);background:#fff}
+  .foot{padding:6px 30px 34px;color:var(--mut);font-size:11px;line-height:1.6}
+  .foot code{background:#e7f1fb;padding:1px 6px;border-radius:6px;color:var(--ink2);font-weight:700;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:10px}
+  @media (max-width:1150px){.stage{grid-template-columns:1fr 1fr}}
+  .voltar{position:fixed;top:16px;left:16px;z-index:30;background:rgba(255,255,255,.92);
+    border:1px solid var(--line);border-radius:20px;padding:7px 14px;font-size:12.5px;font-weight:700;
+    color:var(--accent2);text-decoration:none;box-shadow:0 2px 8px rgba(13,27,42,.12);transition:.15s}
+  .voltar:hover{background:#fff;box-shadow:0 6px 16px rgba(13,27,42,.18)}
+</style>
+</head>
+<body>
+<a class="voltar" href="../index.html?aba=3">← Voltar ao Hub</a>
+<div class="sf-badge"><img class="sf-logo" src="../assets/salesforce-logo.png" alt="Salesforce"> Agentforce</div>
+
+<header>
+  <h1>Atendimento · <span class="em">Arquitetura-alvo</span> — Super Agent / Control Plane · MCP · A2A com Bedrock</h1>
+  <div class="sub">A mesma jornada de Atendimento que já roda ao vivo, projetada para o futuro: um <b>Control Plane</b> (MuleSoft Agent Fabric) governando os agentes <b>reais</b> da org, capacidades expostas como <b>MCP Servers</b> e uma análise de risco delegada a um <b>Amazon Bedrock Agent via A2A</b>. Cenário: reclamação de <b>fraude</b>.</div>
+</header>
+
+<div class="vision-note"><span class="k">🔮</span>
+  <span>Esta é uma <b>visão de arquitetura-alvo</b>, não o que roda hoje. Verificado nesta org (read-only): <b>não há licença MuleSoft/Agent Fabric, endpoint MCP nem credencial Bedrock</b>. O que já é <b>real</b> aparece com o selo <b>● AO VIVO</b> (canal, agentes, Case/Slack); o que é <b>projeção</b> aparece com <b>○ VISÃO</b>. Nenhum nome foi inventado — os agentes são os da org.</span></div>
+
+<div class="controls" id="controls">
+  <button class="runall" id="run">▶ Rodar a jornada-alvo</button>
+  <button class="reset" id="rst">↺ Limpar</button>
+  <span class="cpf-tag">🪪 Cenário: <b>Fraude / contestação</b> · cliente não reconhece uma transação</span>
+</div>
+
+<div class="legend">
+  <span class="p"><span class="badge live">● AO VIVO</span> existe hoje na org (nomes reais verificados)</span>
+  <span class="p"><span class="badge vision">○ VISÃO</span> arquitetura-alvo — não no ar nesta org</span>
+</div>
+
+<div class="stage" id="stage">
+  <div id="packet"></div>
+
+  <!-- 1 · CHANNEL (LIVE) -->
+  <div class="layer" id="L-channel">
+    <div class="lname">Channel Layer<small>canal com o cliente</small></div>
+    <span class="badge live lbadge">● AO VIVO</span>
+    <div class="node" id="ch-app"><span class="tinybadge live">LIVE</span><div class="t tt"><span class="ic">📱</span>Chat do App</div><div class="d">Cliente no app · MIAW · <code>SOMA_App_Banco_API</code></div></div>
+    <div class="node" id="ch-bacen"><span class="tinybadge live">LIVE</span><div class="t tt"><span class="ic">🏛️</span>Landing do Bacen</div><div class="d">Reclamação no regulador (RDR) · Site com token</div></div>
+    <div class="node" id="ch-in" style="margin-top:auto"><div class="t"><span class="ic">📨</span>Reclamação recebida</div><div class="d" id="ch-utter">— clique “Rodar a jornada-alvo” —</div></div>
+  </div>
+
+  <!-- 2 · SUPER AGENT / CONTROL PLANE (VISION) -->
+  <div class="layer vision" id="L-control">
+    <div class="lname">Super Agent · Control Plane<small>MuleSoft Agent Fabric</small></div>
+    <span class="badge vision lbadge">○ VISÃO</span>
+    <div class="cplane">
+      <div class="cp-title">Enterprise Agentic Control Plane</div>
+      <div class="cbar" id="cp-orch"><span class="dot"></span>Orchestration &amp; Runtime</div>
+      <div class="cbar" id="cp-reg"><span class="dot"></span>Agents Catalog / Registry</div>
+      <div class="cbar" id="cp-obs"><span class="dot"></span>Observability</div>
+      <div class="cbar" id="cp-gov"><span class="dot"></span>Real-time Governance</div>
+    </div>
+    <div class="node vis" id="ctrl-route"><span class="tinybadge vision">VISÃO</span><div class="t tt"><span class="ic">🕸️</span>Fabric roteia</div>
+      <div class="d">Descobre no registry o agente certo e distribui a tarefa sob governança</div></div>
+    <div class="verdict" id="verdict"><div class="cat" id="v-cat">aguardando…</div><div class="meta" id="v-meta"></div></div>
+  </div>
+
+  <!-- 3 · AGENTES REAIS (LIVE) -->
+  <div class="layer" id="L-agents">
+    <div class="lname">Agentes Agentforce<small>os REAIS da org</small></div>
+    <span class="badge live lbadge">● AO VIVO</span>
+    <div class="node" id="ag-orch"><span class="tinybadge live">LIVE</span><div class="t tt"><span class="ic">🎯</span>SOMA_Orchestrator</div><div class="d">Triagem · classifica por <code>SLA_Bacen__mdt</code> · planner <b>Atlas</b></div></div>
+    <div class="node specialist" id="sp-fraude"><span class="tinybadge live">LIVE</span><div class="t tt"><span class="ic">🕵️‍♀️</span>Especialista Fraude/Contestação</div><div class="d">Assume a contestação (N2)</div></div>
+    <div class="node specialist" id="sp-pix"><span class="tinybadge live">LIVE</span><div class="t tt"><span class="ic">💸</span>Especialista Pix/MED</div><div class="d"><code>Especialista_PIX_MED_N2</code> · ReAct</div></div>
+    <div class="node specialist" id="sp-ti" style="margin-top:auto"><span class="tinybadge live">LIVE</span><div class="t tt"><span class="ic">🛠️</span>HelpDesk TI (N3)</div><div class="d"><code>HelpDeskTI_N3</code> · ReAct</div></div>
+  </div>
+
+  <!-- 4 · MCP + A2A (VISION) -->
+  <div class="layer vision" id="L-mcp">
+    <div class="lname">MCP Servers &amp; A2A<small>capacidades + agente externo</small></div>
+    <span class="badge vision lbadge">○ VISÃO</span>
+    <div class="node vis" id="mcp-service"><span class="tinybadge vision">VISÃO</span><div class="t tt"><span class="ic">🔌</span>MCP Server · Service</div><div class="d">Hoje é a Ação Apex <code>AbrirCasoFraude</code></div></div>
+    <div class="node vis" id="mcp-ind"><span class="tinybadge vision">VISÃO</span><div class="t tt"><span class="ic">🔌</span>MCP Server · Industry</div><div class="d">Fraude / Pix / Crédito · via Named Credential</div></div>
+    <div class="node a2a-card vis" id="a2a-bedrock" style="margin-top:auto"><span class="tinybadge vision">VISÃO</span><div class="t tt"><span class="ic">🤝</span>Amazon Bedrock Agent</div>
+      <div class="d">Análise de risco de fraude, delegada por <b>A2A</b></div>
+      <div class="a2a-score" id="a2a-score"></div></div>
+  </div>
+
+  <!-- 5 · CRM (LIVE) -->
+  <div class="layer" id="L-crm">
+    <div class="lname">Business Apps · CRM<small>estado real no Salesforce</small></div>
+    <span class="badge live lbadge">● AO VIVO</span>
+    <div class="node crm-card" id="crm"><span class="tinybadge live">LIVE</span>
+      <div class="t tt"><span class="ic">🗂️</span><span id="crm-num">Case —</span></div>
+      <div class="row"><span class="k">Categoria</span><span class="v" id="crm-cat">—</span></div>
+      <div class="row"><span class="k">Estágio</span><span class="v" id="crm-stage">—</span></div>
+      <div class="row"><span class="k">SLA</span><span class="v" id="crm-sla">—</span></div>
+      <div class="row"><span class="k">Risco (Bedrock)</span><span class="v hl" id="crm-risk">—</span></div>
+      <div class="artifact" id="crm-art"><div class="lab">CaseComment real · fala do especialista</div><div id="crm-art-body"></div></div>
+    </div>
+    <div class="node" id="crm-slack" style="margin-top:auto"><div class="t"><span class="ic">💬</span>Narração no Slack</div><div class="d" id="crm-narr">— cada transição vira uma fala no canal do chamado —</div></div>
+  </div>
+</div>
+
+<div class="status">
+  <div class="statusbar"><span class="step" id="st-step">PRONTO</span><span id="st-msg">Clique “Rodar a jornada-alvo” para ver a reclamação de fraude fluir pelo Control Plane, MCP e A2A com Bedrock — com os agentes reais no meio.</span></div>
+</div>
+
+<div class="trust">🔒 <b>Einstein Trust Layer</b> — Guardrails · Zero-Data Retention · Detecção de toxicidade · Data masking · Defesa a prompt injection &nbsp;|&nbsp; atravessa todas as camadas (real e alvo)</div>
+
+<div class="orgbar">
+  <span class="lbl">🔗 O que já é real:</span>
+  <a href="atendimento-agentico.html">▶ Ver a orquestração AO VIVO (hoje)</a>
+  <a href="detalhe-tecnico.html?j=atendimento">🔬 Detalhe técnico (live vs. referência)</a>
+</div>
+
+<div class="foot" id="foot">
+  <b>● AO VIVO</b> (verificado no metadata): canal MIAW <code>SOMA_App_Banco_API</code> + Landing Bacen; agentes reais <code>SOMA_Orchestrator</code>, <code>Especialista_PIX_MED_N2</code>, <code>HelpDeskTI_N3</code>; triagem por <code>SLA_Bacen__mdt</code>; ações Apex <code>AbrirCasoFraude</code> / <code>CriarCanalSlack</code>; estado em <code>Case</code> + <code>CaseComment</code> + Slack.
+  &nbsp;•&nbsp; <b>○ VISÃO</b> (não no ar nesta org, confirmado read-only): Super Agent / Control Plane (MuleSoft Agent Fabric), MCP Servers (hoje as capacidades são Ações Apex), e A2A com Amazon Bedrock (exige conta AWS + Bedrock). Identidade: Brand Central 2026 · org <code>somaOrg</code>.
+</div>
+
+<script>
+// ============================================================================
+// Passos da jornada-alvo (cenário Fraude). Cada passo diz o que é LIVE vs VISÃO.
+// Agentes/ações são os REAIS da org; camadas-alvo marcadas como visão.
+// ============================================================================
+const STEPS = [
+  { key:"canal", vis:false, step:"1 · CANAL", stepVis:false,
+    from:null, to:null,
+    lit:["L-channel"], on:["ch-bacen","ch-in"],
+    utter:"“Não reconheço uma transação de compra indevida no cartão. Foi golpe, quero a contestação.”",
+    msg:"<b>● AO VIVO</b> — a reclamação chega pela <b>Landing do Bacen</b> (ou pelo Chat do App via MIAW). O Case nasce com o relógio regulatório." },
+
+  { key:"control", vis:true, step:"2 · CONTROL PLANE", stepVis:true,
+    from:"ch-in", to:"ctrl-route",
+    lit:["L-control"], cp:["cp-orch","cp-reg","cp-obs","cp-gov"], on:["ctrl-route"],
+    verdict:"Fabric assume o roteamento", vmeta:"registry + governança em tempo real",
+    msg:"<b>○ VISÃO</b> — no alvo, o <b>Super Agent / Control Plane</b> (MuleSoft Agent Fabric) recebe a tarefa, consulta o <b>registry</b> de agentes e distribui sob observabilidade e governança. Hoje esse papel é do próprio planner Atlas do agente." },
+
+  { key:"orch", vis:false, step:"3 · ORQUESTRADOR (real)", stepVis:false,
+    from:"ctrl-route", to:"ag-orch",
+    lit:["L-agents"], on:["ag-orch"],
+    verdict:"Fraude e Contestação (N2)", vmeta:"classificado por SLA_Bacen__mdt · 10 dias úteis",
+    msg:"<b>● AO VIVO</b> — o <b>SOMA_Orchestrator</b> (agente real, planner Atlas) classifica a reclamação contra as regras do Banco Central e decide a categoria: <b>Fraude/Contestação</b>." },
+
+  { key:"spec", vis:false, step:"4 · ESPECIALISTA (real)", stepVis:false,
+    from:"ag-orch", to:"sp-fraude",
+    on:["sp-fraude"], candidate:"sp-fraude",
+    msg:"<b>● AO VIVO</b> — o Control Plane derivaria, e o <b>Especialista de Fraude/Contestação</b> assume o caso — exatamente como já acontece hoje na orquestração real." },
+
+  { key:"mcp", vis:true, step:"5 · MCP", stepVis:true,
+    from:"sp-fraude", to:"mcp-service",
+    lit:["L-mcp"], on:["mcp-service","mcp-ind"],
+    msg:"<b>○ VISÃO</b> — no alvo, o especialista chama as capacidades como <b>MCP Servers</b> (protocolo do setor), via Named Credential. Hoje isso é a <b>Ação Apex</b> <code>AbrirCasoFraude</code> — mesma função, forma diferente." },
+
+  { key:"a2a", vis:true, step:"6 · A2A · Bedrock", stepVis:true,
+    from:"mcp-ind", to:"a2a-bedrock",
+    on:["a2a-bedrock"],
+    a2a:"Risco: ALTO (0,87) · padrão de golpe conhecido · recomenda bloqueio cautelar",
+    verdict:"Análise externa concluída", vmeta:"Bedrock Agent respondeu via A2A",
+    msg:"<b>○ VISÃO</b> — o Control Plane delega a <b>análise de risco</b> a um <b>Amazon Bedrock Agent via A2A</b>; ele devolve um score que enriquece a decisão. Exige conta AWS + Bedrock — não provisionado nesta org." },
+
+  { key:"crm", vis:false, step:"7 · CRM + SLACK (real)", stepVis:false,
+    from:"a2a-bedrock", to:"crm",
+    lit:["L-crm"], on:["crm","crm-slack"],
+    crm:{ num:"Case 00001386", cat:"Fraude e Contestação (N2)", stage:"Em_Especialista", sla:"10 dias úteis · Res. BCB 222/2022", risk:"ALTO (0,87) · Bedrock" },
+    art:"[Especialista Fraude/Contestação] Contestação registrada; transação marcada para análise e bloqueio cautelar (risco ALTO confirmado pela análise externa). Prazo: até 10 dias úteis (Res. BCB 222/2022).",
+    narr:"💬 <b>Especialista de Fraude/Contestação (N2)</b> assumiu: contestação registrada, bloqueio cautelar, risco ALTO.",
+    msg:"<b>● AO VIVO</b> — o desfecho grava de verdade: <b>Case</b> + <b>CaseComment</b> reais e narração no <b>Slack</b>. O score do Bedrock entra como contexto da decisão." },
+];
+
+const byId=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let running=false;
+
+byId('run').onclick=()=>{ if(!running) run(); };
+byId('rst').onclick=()=>{ if(!running) resetAll(); };
+
+function resetAll(){
+  document.querySelectorAll('.node,.layer,.cbar').forEach(n=>n.classList.remove('on','done','lit','pulse','dim','vis','candidate'));
+  // repõe .vis nos nós que nascem visão (para o glow âmbar/roxo correto)
+  ['ctrl-route','mcp-service','mcp-ind','a2a-bedrock'].forEach(id=>byId(id).classList.add('vis'));
+  byId('verdict').classList.remove('show'); byId('v-cat').textContent='aguardando…'; byId('v-meta').textContent='';
+  byId('a2a-score').classList.remove('show'); byId('a2a-score').textContent='';
+  byId('ch-utter').textContent='— clique “Rodar a jornada-alvo” —';
+  byId('crm-num').textContent='Case —'; byId('crm-cat').textContent='—'; byId('crm-stage').textContent='—';
+  byId('crm-sla').textContent='—'; byId('crm-risk').textContent='—';
+  byId('crm-art').classList.remove('show'); byId('crm-art-body').textContent='';
+  byId('crm-narr').textContent='— cada transição vira uma fala no canal do chamado —';
+  setStatus('PRONTO','Clique “Rodar a jornada-alvo” para ver a reclamação de fraude fluir pelo Control Plane, MCP e A2A com Bedrock — com os agentes reais no meio.', false);
+}
+function setStatus(step,msg,vis){ const s=byId('st-step'); s.textContent=step; s.classList.toggle('vis',!!vis); byId('st-msg').innerHTML=msg; }
+
+function centerOf(el){ const s=byId('stage').getBoundingClientRect(); const r=el.getBoundingClientRect();
+  return { x:r.left-s.left+r.width/2, y:r.top-s.top+r.height/2 }; }
+async function flyTo(fromEl,toEl,vis,ms=640){
+  const p=byId('packet'); const a=centerOf(fromEl), b=centerOf(toEl);
+  p.classList.toggle('vis',!!vis);
+  p.style.transition='none'; p.style.left=a.x+'px'; p.style.top=a.y+'px'; p.classList.add('go');
+  await sleep(20); p.style.transition=`left ${ms}ms cubic-bezier(.5,0,.3,1), top ${ms}ms cubic-bezier(.5,0,.3,1)`;
+  p.style.left=b.x+'px'; p.style.top=b.y+'px'; await sleep(ms);
+}
+
+async function run(){
+  running=true; byId('run').disabled=true; resetAll();
+
+  for(const s of STEPS){
+    // move o pacote (se houver origem/destino)
+    if(s.from && s.to){ await flyTo(byId(s.from), byId(s.to), s.vis); }
+    // acende camadas
+    (s.lit||[]).forEach(id=>byId(id).classList.add('lit'));
+    // control-plane bars
+    if(s.cp){ for(const b of s.cp){ byId(b).classList.add('pulse'); await sleep(140); } }
+    // candidato especialista (apaga os outros)
+    if(s.candidate){
+      document.querySelectorAll('.specialist').forEach(n=>{ if(n.id!==s.candidate){ n.classList.add('dim'); } });
+      byId(s.candidate).classList.add('candidate');
+    }
+    // nós acesos
+    (s.on||[]).forEach(id=>{ const el=byId(id); el.classList.add('on'); });
+    // verdict
+    if(s.verdict){ byId('verdict').classList.add('show'); byId('v-cat').textContent=s.verdict; byId('v-meta').textContent=s.vmeta||''; }
+    // canal utterance
+    if(s.utter) byId('ch-utter').textContent=s.utter;
+    // A2A score
+    if(s.a2a){ const sc=byId('a2a-score'); sc.classList.add('show'); sc.textContent='↩ '+s.a2a; }
+    // CRM write
+    if(s.crm){ byId('crm-num').textContent=s.crm.num; byId('crm-cat').textContent=s.crm.cat; byId('crm-stage').textContent=s.crm.stage;
+      byId('crm-sla').textContent=s.crm.sla; byId('crm-risk').textContent=s.crm.risk; }
+    if(s.art){ byId('crm-art').classList.add('show'); byId('crm-art-body').textContent=s.art; }
+    if(s.narr){ byId('crm-narr').innerHTML=s.narr; }
+    setStatus(s.step, s.msg, s.stepVis);
+    // marca "done" os nós que acabaram de agir (menos os que continuam de contexto)
+    await sleep(s.a2a?1500:1050);
+    (s.on||[]).forEach(id=>{ const el=byId(id); if(!el.classList.contains('crm-card')) { el.classList.remove('on'); el.classList.add('done'); } });
+  }
+
+  byId('crm').classList.add('done');
+  setStatus('✓ CONCLUÍDO', 'Jornada-alvo completa: <b>Control Plane</b> governou, <b>MCP</b> expôs as capacidades e o <b>Bedrock via A2A</b> devolveu o risco — com os <b>agentes reais</b> no núcleo e o desfecho gravado de verdade no <b>Case</b>. As camadas ○ VISÃO ainda não estão no ar nesta org.', false);
+  byId('run').disabled=false; running=false;
+}
+
+// arranca com os nós-visão já marcados (glow correto)
+['ctrl-route','mcp-service','mcp-ind','a2a-bedrock'].forEach(id=>byId(id).classList.add('vis'));
+</script>
+</body>
+</html>

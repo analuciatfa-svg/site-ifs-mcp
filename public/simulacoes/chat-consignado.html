@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<!--
+  chat-consignado.html (Site das IFs V2) — SIMULAÇÃO REAL do Consignado.
+  Espelho do chat-banco.html, mas para a jornada COMERCIAL do Consignado:
+  o cliente se identifica pelo CPF e o Orquestrador Comercial deriva para os
+  especialistas (oferta → negociação → assinatura → liberação).
+  Canal = Chat do App (MIAW SOMA_Consignado_API / deployment SOMA_Consignado_MIAW)
+  via a ponte servidor_ponte em http://localhost:8789 — MESMOS agentes, MESMO
+  backend, MESMA org. A ponte precisa estar no ar:
+    cd demo-kit && MIAW_DEV_NAME=SOMA_Consignado_MIAW ./iniciar.sh consignado-clt
+  Grava de verdade na Opportunity (PROP-<cpf>): estágio avança Oferta_Enviada →
+  Condicoes_Confirmadas → Contrato_Assinado → Credito_Liberado (Closed Won).
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crédito Consignado · Banco Digital</title>
+<style>
+  :root{
+    --azul:#0a2540; --azul2:#123a63;
+    --acento:#00b3ff; --acento2:#0a55f5;
+    --head1:#0a2540; --head2:#123a63;
+    --verde:#12b76a; --bg:#0b1220; --card:#0f1b2e; --texto:#e8eef7;
+    --bolha-user:#0a55f5; --bolha-bot:#1b2a41; --mut:#8aa0bd;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-font-smoothing:antialiased}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:radial-gradient(120% 80% at 50% -10%, #10233f 0%, #070d18 60%);
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    padding:24px; color:var(--texto);
+  }
+  .phone{
+    width:400px; height:820px; max-height:94vh; background:var(--bg);
+    border-radius:44px; box-shadow:0 30px 90px rgba(0,0,0,.6), 0 0 0 12px #05080f, 0 0 0 13px #1a2740;
+    overflow:hidden; display:flex; flex-direction:column; position:relative;
+  }
+  .notch{position:absolute; top:0; left:50%; transform:translateX(-50%); width:150px; height:30px;
+    background:#05080f; border-radius:0 0 18px 18px; z-index:20}
+  .appbar{
+    background:linear-gradient(120deg, var(--head1) 0%, var(--head2) 100%);
+    padding:46px 20px 16px; display:flex; align-items:center; gap:12px;
+    border-bottom:1px solid rgba(255,255,255,.06);
+  }
+  .avatar{width:44px; height:44px; border-radius:50%;
+    background:linear-gradient(135deg,var(--acento),var(--acento2));
+    display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0;
+    box-shadow:0 4px 14px rgba(0,179,255,.4)}
+  .appbar .info{flex:1; min-width:0}
+  .appbar .nome{font-weight:650; font-size:16px; letter-spacing:-.01em}
+  .appbar .status{font-size:12.5px; color:#7fe0a8; display:flex; align-items:center; gap:5px}
+  .dot{width:7px; height:7px; border-radius:50%; background:var(--verde); box-shadow:0 0 8px var(--verde)}
+  .badge-af{margin-left:auto; font-size:10px; color:var(--mut); text-align:right; line-height:1.3}
+  .badge-af b{color:var(--acento); display:block; font-size:11px}
+  .chat{flex:1; overflow-y:auto; padding:18px 16px 8px; display:flex; flex-direction:column; gap:10px;
+    background:linear-gradient(180deg, transparent, rgba(0,0,0,.15))}
+  .chat::-webkit-scrollbar{width:0}
+  .row{display:flex; gap:8px; align-items:flex-end; animation:rise .35s ease both}
+  .row.user{flex-direction:row-reverse}
+  @keyframes rise{from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:translateY(0)}}
+  .mini{width:26px; height:26px; border-radius:50%; flex-shrink:0;
+    background:linear-gradient(135deg,var(--acento),var(--acento2));
+    display:flex; align-items:center; justify-content:center; font-size:13px}
+  .bubble{max-width:76%; padding:11px 14px; border-radius:18px; font-size:14.5px; line-height:1.45;
+    word-wrap:break-word; white-space:pre-wrap}
+  .bot .bubble{background:var(--bolha-bot); border-bottom-left-radius:5px}
+  .user .bubble{background:var(--bolha-user); border-bottom-right-radius:5px; color:#fff}
+  .time{font-size:10px; color:var(--mut); margin-top:3px}
+  .typing{display:flex; gap:4px; padding:13px 15px; background:var(--bolha-bot);
+    border-radius:18px; border-bottom-left-radius:5px; width:fit-content}
+  .typing span{width:7px; height:7px; border-radius:50%; background:var(--mut);
+    animation:blink 1.3s infinite both}
+  .typing span:nth-child(2){animation-delay:.2s}
+  .typing span:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,60%,100%{opacity:.25; transform:translateY(0)} 30%{opacity:1; transform:translateY(-3px)}}
+  .composer{padding:12px 14px 22px; background:var(--card); border-top:1px solid rgba(255,255,255,.06);
+    display:flex; gap:9px; align-items:center}
+  .composer input{flex:1; background:#0a1424; border:1px solid rgba(255,255,255,.1); color:var(--texto);
+    padding:13px 16px; border-radius:22px; font-size:14.5px; outline:none}
+  .composer input:focus{border-color:var(--acento)}
+  .send{width:44px; height:44px; border-radius:50%; border:none; cursor:pointer; flex-shrink:0;
+    background:linear-gradient(135deg,var(--acento),var(--acento2)); color:#fff; font-size:18px;
+    display:flex; align-items:center; justify-content:center; transition:transform .12s}
+  .send:active{transform:scale(.9)}
+  .send:disabled{opacity:.4; cursor:default}
+  .mic{width:44px; height:44px; border-radius:50%; border:1px solid rgba(255,255,255,.12);
+    cursor:pointer; flex-shrink:0; background:#0a1424; color:var(--texto); font-size:18px;
+    display:flex; align-items:center; justify-content:center; transition:transform .12s, background .15s}
+  .mic:active{transform:scale(.9)}
+  .mic.listening{background:linear-gradient(135deg,#ff4d6d,#c81d4a); color:#fff; border-color:transparent;
+    animation:pulseMic 1.1s infinite}
+  @keyframes pulseMic{0%,100%{box-shadow:0 0 0 0 rgba(255,77,109,.55)} 60%{box-shadow:0 0 0 12px rgba(255,77,109,0)}}
+  .voicetoggle{width:34px; height:34px; border-radius:50%; border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.06); color:#fff; font-size:15px; cursor:pointer; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; transition:opacity .15s}
+  .voicetoggle.off{opacity:.45}
+  .chips{display:flex; gap:7px; flex-wrap:wrap; padding:0 16px 10px}
+  .chip{font-size:12.5px; padding:7px 13px; border-radius:16px; cursor:pointer;
+    background:rgba(0,179,255,.1); border:1px solid rgba(0,179,255,.35); color:var(--acento);
+    transition:background .15s}
+  .chip:hover{background:rgba(0,179,255,.22)}
+</style>
+</head>
+<body>
+  <a href="../index.html?aba=3" style="position:fixed;top:16px;left:16px;z-index:50;color:#cfe4ff;text-decoration:none;font:600 13px -apple-system,BlinkMacSystemFont,sans-serif;background:rgba(10,37,64,.6);border:1px solid rgba(255,255,255,.18);border-radius:20px;padding:7px 14px;backdrop-filter:blur(6px)">&larr; Voltar ao Hub</a>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="appbar">
+      <div class="avatar">🤖</div>
+      <div class="info">
+        <div class="nome">Crédito Consignado · Banco Digital</div>
+        <div class="status"><span class="dot"></span> online agora</div>
+      </div>
+      <button class="voicetoggle" id="voiceToggle" title="Assistente responde por voz">🔊</button>
+      <div class="badge-af"><b>Agentforce</b>ao vivo</div>
+    </div>
+
+    <div class="chat" id="chat"></div>
+
+    <div class="chips" id="chips">
+      <div class="chip" onclick="sugestao(this)">Quero ver minha oferta de consignado. Meu CPF é 111.111.111-11</div>
+      <div class="chip" onclick="sugestao(this)">Posso pagar em menos parcelas?</div>
+      <div class="chip" onclick="sugestao(this)">Sim, confirmo as condições. Quero assinar o contrato</div>
+      <div class="chip" onclick="sugestao(this)">Pode liberar o crédito na agência 0001, conta 12345-6</div>
+    </div>
+
+    <div class="composer">
+      <button class="mic" id="mic" title="Falar com o assistente">🎤</button>
+      <input id="entrada" placeholder="Escreva seu CPF, fale no 🎤 ou toque num atalho…" autocomplete="off"
+             onkeydown="if(event.key==='Enter')enviar()">
+      <button class="send" id="btn" onclick="enviar()">➤</button>
+    </div>
+  </div>
+
+<script>
+const API = 'http://localhost:8789';  // ponte ao vivo do Consignado (comercial por CPF)
+let sessao = null, ttsNeural = false, voiceOn = true, ocupado = false;
+const chat = document.getElementById('chat');
+const entrada = document.getElementById('entrada');
+const btn = document.getElementById('btn');
+const chips = document.getElementById('chips');
+
+function agora(){
+  const d = new Date();
+  return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+}
+function addBolha(texto, quem){
+  const row = document.createElement('div');
+  row.className = 'row ' + quem;
+  const mini = quem === 'bot' ? '<div class="mini">🤖</div>' : '';
+  row.innerHTML = mini +
+    `<div><div class="bubble">${escapar(texto)}</div><div class="time">${agora()}</div></div>`;
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+}
+function escapar(t){ return (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+let typingEl = null;
+function mostrarDigitando(){
+  esconderDigitando();
+  const row = document.createElement('div');
+  row.className = 'row bot'; row.id = '_typing_row';
+  row.innerHTML = '<div class="mini">🤖</div><div class="typing"><span></span><span></span><span></span></div>';
+  chat.appendChild(row); chat.scrollTop = chat.scrollHeight; typingEl = row;
+}
+function esconderDigitando(){ if(typingEl){ typingEl.remove(); typingEl = null; } }
+
+let vozPT = null, audioAtual = null;
+function escolherVoz(){
+  const vs = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+  return vs.find(v=>/pt.?BR/i.test(v.lang) && /female|femin|luciana|fernanda|maria|helo/i.test(v.name))
+      || vs.find(v=>/pt.?BR/i.test(v.lang)) || vs.find(v=>/^pt/i.test(v.lang)) || null;
+}
+function pararAudio(){
+  if(audioAtual){ try{ audioAtual.pause(); }catch(e){} audioAtual=null; }
+  if('speechSynthesis' in window) window.speechSynthesis.cancel();
+}
+function speakNavegador(txt){
+  if(!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  txt.split(/(?<=[.!?…:])\s+|\n+/).map(s=>s.trim()).filter(Boolean).forEach(frase=>{
+    const u = new SpeechSynthesisUtterance(frase);
+    u.lang='pt-BR'; u.rate=1.12; u.pitch=1.02; u.volume=1.0;
+    if(!vozPT) vozPT = escolherVoz();
+    if(vozPT) u.voice = vozPT;
+    window.speechSynthesis.speak(u);
+  });
+}
+async function speakNeural(txt){
+  try{
+    pararAudio();
+    const r = await fetch(API+'/falar', {method:'POST', headers:{'Content-Type':'text/plain;charset=UTF-8'},
+      body: JSON.stringify({texto: txt})});
+    if(!r.ok) throw new Error('tts '+r.status);
+    const blob = await r.blob();
+    const a = new Audio(URL.createObjectURL(blob)); audioAtual = a;
+    a.onended = a.onerror = ()=>{ URL.revokeObjectURL(a.src); if(audioAtual===a) audioAtual=null; };
+    await a.play(); return true;
+  }catch(e){ return false; }
+}
+function falar(texto){
+  if(!voiceOn) return;
+  const txt = (texto||'').replace(/<[^>]+>/g,' ')
+                .replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}]/gu,'')
+                .replace(/\s+/g,' ').trim();
+  if(!txt) return;
+  pararAudio();
+  if(ttsNeural){ speakNeural(txt).then(ok=>{ if(!ok) speakNavegador(txt); }); }
+  else{ speakNavegador(txt); }
+}
+
+async function iniciar(){
+  try{
+    const p = await (await fetch(API+'/ping')).json();
+    ttsNeural = !!p.tts;
+  }catch(e){}
+  mostrarDigitando();
+  try{
+    const r = await (await fetch(API+'/iniciar', {method:'POST'})).json();
+    esconderDigitando();
+    if(r.ok){ sessao = r.sessao; }
+    const bolhas = (r.bolhas||[]);
+    if(bolhas.length){
+      for(let i=0;i<bolhas.length;i++){
+        setTimeout(()=>{ addBolha(bolhas[i],'bot'); falar(bolhas[i]); }, i*550);
+      }
+    }else{
+      addBolha('Olá! Sou o assistente de Crédito Consignado. Como posso ajudar?','bot');
+    }
+  }catch(e){
+    esconderDigitando();
+    addBolha('Não consegui conectar ao assistente. O servidor-ponte do consignado (porta 8789) está rodando?','bot');
+  }
+}
+function sugestao(el){ entrada.value = el.textContent; enviar(); }
+
+async function enviar(){
+  const texto = entrada.value.trim();
+  if(!texto || ocupado) return;
+  ocupado = true; btn.disabled = true; chips.style.display = 'none';
+  addBolha(texto,'user'); entrada.value = ''; mostrarDigitando();
+  try{
+    const resp = await fetch(API+'/mensagem', {method:'POST',
+      headers:{'Content-Type':'text/plain;charset=UTF-8'}, body: JSON.stringify({sessao, texto})});
+    const d = await resp.json(); esconderDigitando();
+    if(d.ok && d.bolhas && d.bolhas.length){
+      for(let i=0;i<d.bolhas.length;i++){
+        setTimeout(()=>{ addBolha(d.bolhas[i],'bot'); falar(d.bolhas[i]); }, i*550);
+      }
+    }else{ addBolha(d.erro ? ('Erro: '+d.erro) : 'O assistente não respondeu. Tente novamente.','bot'); }
+  }catch(e){ esconderDigitando(); addBolha('Falha de conexão com o assistente.','bot'); }
+  finally{ ocupado = false; btn.disabled = false; entrada.focus(); }
+}
+
+const vt = document.getElementById('voiceToggle');
+vt.onclick = ()=>{
+  voiceOn = !voiceOn;
+  vt.classList.toggle('off', !voiceOn);
+  vt.textContent = voiceOn ? '🔊' : '🔇';
+  vt.title = voiceOn ? 'Assistente responde por voz' : 'Voz do assistente desligada';
+  if(!voiceOn) pararAudio();
+};
+
+const mic = document.getElementById('mic');
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recog = null, listening = false;
+if(SR){
+  recog = new SR();
+  recog.lang='pt-BR'; recog.interimResults=false; recog.maxAlternatives=1;
+  recog.onresult = e=>{ entrada.value = e.results[0][0].transcript; };
+  recog.onend = ()=>{ listening=false; mic.classList.remove('listening');
+    const v = entrada.value.trim(); if(v) enviar(); };
+  recog.onerror = ()=>{ listening=false; mic.classList.remove('listening'); };
+  mic.onclick = ()=>{
+    if(listening){ recog.stop(); return; }
+    pararAudio();
+    try{ recog.start(); listening=true; mic.classList.add('listening'); }catch(err){}
+  };
+}else{ mic.style.display='none'; }
+
+if('speechSynthesis' in window){ speechSynthesis.onvoiceschanged = ()=>{ vozPT = escolherVoz(); }; }
+
+iniciar();
+</script>
+</body>
+</html>

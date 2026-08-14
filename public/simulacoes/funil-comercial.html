@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Funil Comercial Agêntico · PME — a esteira autônoma com gates do cliente</title>
+<style>
+  :root{
+    --ink:#0a2540; --ink2:#123a63; --accent:#00b3ff; --accent2:#0a55f5;
+    --mut:#5b7a99; --card:#fff; --line:#c7ddf0;
+    --ok:#16a34a; --gate:#b45309; --stop:#dc2626;
+    --shadow:0 10px 30px rgba(10,37,64,.10);
+    --shadow2:0 18px 48px rgba(10,37,64,.18);
+    --glow:0 0 0 3px rgba(0,179,255,.28), 0 0 28px rgba(0,179,255,.55);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);
+    background:radial-gradient(1200px 600px at 15% -10%,#f4f9ff 0,transparent 60%),
+      radial-gradient(1000px 500px at 110% 10%,#eef6ff 0,transparent 55%),
+      linear-gradient(180deg,#f7fbff 0,#e9f3fc 100%);min-height:100vh;overflow-x:hidden}
+  header{padding:58px 30px 6px}
+  h1{font-size:25px;margin:0;letter-spacing:-.5px;font-weight:800}
+  h1 .em{color:var(--accent2)}
+  .sub{color:var(--mut);font-size:14px;margin-top:4px;font-weight:600}
+  .sf-badge{position:absolute;top:20px;right:30px;display:flex;align-items:center;gap:8px;color:var(--accent2);font-weight:800;font-size:15px}
+  .sf-badge .cloud{width:34px;height:22px;background:var(--accent);border-radius:14px;position:relative;box-shadow:0 4px 10px rgba(0,179,255,.4)}
+  .sf-badge .cloud:before,.sf-badge .cloud:after{content:"";position:absolute;background:var(--accent);border-radius:50%}
+  .sf-badge .cloud:before{width:16px;height:16px;left:5px;top:-7px}
+  .sf-badge .cloud:after{width:12px;height:12px;right:5px;top:-4px}
+  .sf-badge .sf-logo{height:30px;width:auto;flex:none}
+
+  .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 30px 6px}
+  .lead-btn{border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:9px 13px;
+    font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;transition:.18s;box-shadow:var(--shadow)}
+  .lead-btn:hover{transform:translateY(-2px);border-color:var(--accent)}
+  .lead-btn.active{border-color:var(--accent2);box-shadow:var(--glow)}
+  .lead-btn .porte{font-size:10.5px;font-weight:900;padding:2px 8px;border-radius:20px;color:#fff}
+  .porte.G{background:var(--ok)} .porte.M{background:var(--gate)} .porte.P{background:var(--stop)}
+  .lead-btn .rev{font-size:11px;color:var(--mut);font-weight:800}
+  .runall{margin-left:auto;background:linear-gradient(135deg,var(--accent2),var(--accent));color:#fff;border:none;border-radius:12px;
+    padding:11px 18px;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 8px 20px rgba(10,85,245,.35);transition:.18s}
+  .runall:hover{transform:translateY(-2px)}
+  .reset{background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:11px 14px;font-weight:800;font-size:13px;cursor:pointer;color:var(--ink)}
+
+  .trust{margin:8px 30px 0;background:linear-gradient(90deg,#0e2f57,#123a63);color:#cfe9ff;border-radius:12px;text-align:center;
+    padding:8px;font-size:11.5px;font-weight:700;letter-spacing:.3px;border:1px solid rgba(255,255,255,.1)}
+  .trust b{color:#8fd6ff}
+
+  .stage{position:relative;display:grid;grid-template-columns:1fr 1.9fr 1.05fr;gap:14px;padding:14px 30px 8px;min-height:430px}
+  #packet{position:absolute;width:20px;height:20px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff,var(--accent) 55%,var(--accent2));
+    box-shadow:0 0 18px 4px rgba(0,179,255,.75);opacity:0;z-index:50;transform:translate(-50%,-50%);pointer-events:none}
+  #packet.go{opacity:1}
+  .layer{background:rgba(255,255,255,.55);border:1.5px solid var(--line);border-radius:20px;padding:14px 12px;display:flex;flex-direction:column;position:relative;backdrop-filter:blur(3px)}
+  .layer>.lname{font-size:12.5px;font-weight:900;text-transform:uppercase;letter-spacing:.6px;color:var(--ink2);text-align:center;margin-bottom:12px}
+  .layer>.lname small{display:block;font-weight:700;letter-spacing:0;text-transform:none;color:var(--mut);font-size:11px;margin-top:2px}
+  .layer.lit{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,179,255,.25),var(--shadow2);background:rgba(255,255,255,.85)}
+
+  .node{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:9px;box-shadow:var(--shadow);transition:.25s;position:relative}
+  .node .t{font-weight:800;font-size:13px;display:flex;align-items:center;gap:8px}
+  .node .d{font-size:11px;color:var(--mut);margin-top:2px;line-height:1.3}
+  .node .ic{font-size:16px;width:20px;text-align:center}
+  .node.on{border-color:var(--accent2);box-shadow:var(--glow);transform:translateY(-2px)}
+  .node.done{border-color:var(--ok)}
+  .node.done .t:after{content:"✓";margin-left:auto;color:var(--ok);font-weight:900}
+  .node.dim{opacity:.4;filter:saturate(.5)}
+
+  .cplane{background:linear-gradient(180deg,#0e2f57,#0a2540);border-radius:14px;padding:10px;margin-bottom:10px;box-shadow:var(--shadow2)}
+  .cplane .cp-title{color:#bfe6ff;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;text-align:center;margin-bottom:8px}
+  .cbar{background:rgba(255,255,255,.08);color:#eaf6ff;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;margin:5px 0;
+    border:1px solid rgba(255,255,255,.12);transition:.2s;display:flex;align-items:center;gap:7px}
+  .cbar.pulse{background:linear-gradient(90deg,var(--accent2),var(--accent));border-color:transparent;box-shadow:0 6px 16px rgba(0,179,255,.4)}
+  .cbar .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
+  .cbar.pulse .dot{background:#fff;box-shadow:0 0 8px #fff}
+
+  /* the conveyor of stages */
+  .belt{display:flex;flex-direction:column;gap:7px}
+  .stg{display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:8px 11px;box-shadow:var(--shadow);transition:.25s;position:relative;opacity:.55}
+  .stg .num{width:22px;height:22px;border-radius:50%;background:var(--ink2);color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;flex:none}
+  .stg .body{flex:1}
+  .stg .nm{font-weight:800;font-size:12.5px}
+  .stg .ag{font-size:10.5px;color:var(--mut);font-weight:600}
+  .stg .badge{font-size:9.5px;font-weight:900;padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.3px}
+  .stg.active{opacity:1;border-color:var(--accent2);box-shadow:var(--glow);transform:translateX(4px)}
+  .stg.passed{opacity:1;border-color:var(--ok)}
+  .stg.passed .num{background:var(--ok)}
+  .stg.gate .badge{background:#fff4e6;color:var(--gate);border:1px solid #f4d3a3}
+  .stg.gate.waiting{border-color:var(--gate);box-shadow:0 0 0 3px rgba(180,83,9,.18)}
+  .stg.gate.waiting .num{background:var(--gate);animation:pulseGate 1s infinite}
+  .stg.blocked{opacity:1;border-color:var(--stop)}
+  .stg.blocked .num{background:var(--stop)}
+  @keyframes pulseGate{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+  .stg .fork{position:absolute;right:8px;font-size:10px;font-weight:800}
+
+  .crm-card .row{display:flex;justify-content:space-between;font-size:11.5px;padding:4px 0;border-bottom:1px dashed #e6eef7}
+  .crm-card .row .k{color:var(--mut);font-weight:700}
+  .crm-card .row .v{font-weight:800;text-align:right}
+  .outcome{margin-top:8px;border-radius:12px;padding:10px;text-align:center;font-weight:800;font-size:12.5px;max-height:0;overflow:hidden;transition:max-height .5s,padding .3s;padding-top:0;padding-bottom:0}
+  .outcome.show{max-height:140px;padding:10px}
+  .outcome.win{background:#eaf7ee;color:var(--ok);border:1.5px solid #b6e2c4}
+  .outcome.lose{background:#fdeeee;color:var(--stop);border:1.5px solid #f3c2c2}
+  .outcome.hold{background:#fff4e6;color:var(--gate);border:1.5px solid #f4d3a3}
+  .outcome small{display:block;font-weight:600;color:var(--mut);margin-top:4px;font-size:10.5px}
+  .org-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;max-height:0;overflow:hidden;transition:max-height .5s}
+  .org-links.show{max-height:160px}
+  .org-links .ol-title{width:100%;font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);margin-bottom:2px}
+  .org-links a{display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-size:11px;font-weight:800;color:#fff;
+    background:var(--accent2);border:1.5px solid var(--accent2);border-radius:20px;padding:5px 11px;transition:.15s}
+  .org-links a:hover{background:#0742c9;color:#fff;border-color:#0742c9;transform:translateY(-1px)}
+  .org-links a .cl{height:15px;width:auto;flex:none;object-fit:contain}
+
+  .status{padding:6px 30px 22px}
+  .statusbar{background:#0a2540;color:#dcefff;border-radius:14px;padding:12px 16px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow2);min-height:46px}
+  .statusbar .step{color:var(--accent);font-weight:900;background:rgba(0,179,255,.14);padding:3px 10px;border-radius:20px;font-size:11px;letter-spacing:.4px;flex:none}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;padding:0 30px 14px;font-size:11.5px;color:var(--mut);font-weight:700}
+  .legend .pill{display:inline-flex;align-items:center;gap:6px}
+  .legend .sw{width:12px;height:12px;border-radius:4px}
+  .foot{padding:2px 30px 30px;color:var(--mut);font-size:11px}
+  .foot code{background:#e7f1fb;padding:1px 6px;border-radius:6px;color:var(--ink2);font-weight:700}
+  .voltar{position:fixed;top:16px;left:16px;z-index:30;background:rgba(255,255,255,.92);
+    border:1px solid var(--line);border-radius:20px;padding:7px 14px;font-size:12.5px;font-weight:700;
+    color:var(--accent2);text-decoration:none;box-shadow:0 2px 8px rgba(13,27,42,.12);transition:.15s}
+  .voltar:hover{background:#fff;box-shadow:0 6px 16px rgba(13,27,42,.18)}
+</style>
+</head>
+<body>
+<a class="voltar" href="../index.html?aba=3">← Voltar ao Hub</a>
+<div class="sf-badge"><img class="sf-logo" src="../assets/salesforce-logo.png" alt="Salesforce"> Agentforce</div>
+<header>
+  <h1>Funil Comercial Agêntico · PME — <span class="em">a esteira que anda sozinha e para nos gates do cliente</span></h1>
+  <div class="sub">Banco Digital · jornada Vender · dados <b>reais</b> da org (leads FUNILPME · Cases 00001391–00001392) sobre a Arquitetura de Referência Multi‑Agente</div>
+</header>
+
+<div class="controls" id="controls"></div>
+<div class="trust">🔒 <b>Trust Layer</b> — Guardrails · Zero‑Data Retention · Data masking · Prompt‑injection defense &nbsp;|&nbsp; atravessa todas as camadas</div>
+
+<div class="stage" id="stage">
+  <div id="packet"></div>
+
+  <!-- CHANNEL -->
+  <div class="layer" id="L-channel">
+    <div class="lname">Channel Layer<small>o cliente PME no app</small></div>
+    <div class="node" id="ch-app"><div class="t"><span class="ic">📱</span>Chat do App</div><div class="d">Cliente conversa com o Agentforce (MIAW)</div></div>
+    <div class="node" id="ch-lead" style="margin-top:auto"><div class="t"><span class="ic">🎯</span>Lead PME</div><div class="d" id="ch-info">— escolha um lead acima —</div></div>
+    <div class="node" id="ch-gate"><div class="t"><span class="ic">📎</span>Ação do cliente</div><div class="d" id="ch-gate-info">Gates: enviar documentos · decidir a oferta (NBA)</div></div>
+  </div>
+
+  <!-- SUPER AGENT + BELT -->
+  <div class="layer" id="L-belt">
+    <div class="lname">Super Agent Layer · esteira event‑driven<small>SOMA_Orchestrator + agentes de estágio · <code style="font-size:10px">Funil_Evento__e</code></small></div>
+    <div class="cplane">
+      <div class="cp-title">Enterprise Agentic Control Plane</div>
+      <div class="cbar" id="cp-orch"><span class="dot"></span>Orchestration &amp; Runtime — um salto por evento</div>
+      <div class="cbar" id="cp-gov"><span class="dot"></span>Real‑time Governance — idempotência por estágio</div>
+      <div class="cbar" id="cp-obs"><span class="dot"></span>Observability — telemetria ao Data Cloud</div>
+    </div>
+    <div class="belt" id="belt">
+      <div class="stg" id="s-Nutricao"><div class="num">1</div><div class="body"><div class="nm">Nutrição / Score</div><div class="ag">Agente de Captação &amp; Enriquecimento · CalcularScoreLead</div></div></div>
+      <div class="stg" id="s-Qualificacao"><div class="num">2</div><div class="body"><div class="nm">Qualificação</div><div class="ag">Agente de Qualificação · QualificarLead (corte 70)</div></div></div>
+      <div class="stg" id="s-Conversao"><div class="num">3</div><div class="body"><div class="nm">Conversão</div><div class="ag">Lead → Account + Contact (Database.convertLead)</div></div></div>
+      <div class="stg gate" id="s-Onboarding"><div class="num">4</div><div class="body"><div class="nm">Onboarding <span class="badge">gate · docs</span></div><div class="ag">Abre canal Slack · aguarda documento real do cliente</div></div></div>
+      <div class="stg gate" id="s-Ativacao"><div class="num">5</div><div class="body"><div class="nm">Ativação + NBA <span class="badge">gate · oferta</span></div><div class="ag">Ativa produtos base · entrega a oferta e aguarda decisão</div></div></div>
+      <div class="stg" id="s-Oportunidade"><div class="num">6</div><div class="body"><div class="nm">Oportunidade</div><div class="ag">GerarOportunidade (só se o cliente aceitar) · terminal</div></div><div class="fork" id="fork-mark"></div></div>
+    </div>
+  </div>
+
+  <!-- CRM -->
+  <div class="layer" id="L-crm">
+    <div class="lname">Business Apps · CRM<small>estado real no Salesforce</small></div>
+    <div class="node crm-card" id="crm">
+      <div class="t"><span class="ic">🏢</span><span id="crm-name">Registro —</span></div>
+      <div class="row"><span class="k">Score</span><span class="v" id="crm-score">—</span></div>
+      <div class="row"><span class="k">Qualificação</span><span class="v" id="crm-qual">—</span></div>
+      <div class="row"><span class="k">Estágio funil</span><span class="v" id="crm-stage">—</span></div>
+      <div class="row"><span class="k">Produtos ativados</span><span class="v" id="crm-prod">—</span></div>
+      <div class="row"><span class="k">Canal Slack</span><span class="v" id="crm-slack">—</span></div>
+      <div class="outcome" id="crm-out"></div>
+      <div class="org-links" id="crm-links"></div>
+    </div>
+    <div class="node" id="crm-tele" style="margin-top:auto"><div class="t"><span class="ic">📈</span>Data Cloud</div><div class="d">Cada transição vira telemetria (Score_Lead__c) — insumo para o próximo NBA</div></div>
+  </div>
+</div>
+
+<div class="status"><div class="statusbar"><span class="step" id="st-step">PRONTO</span><span id="st-msg">Escolha um lead PME acima, ou clique em “Rodar os 3 leads”.</span></div></div>
+<div class="legend">
+  <span class="pill"><span class="sw" style="background:var(--ok)"></span>avança / desfecho positivo (Oportunidade)</span>
+  <span class="pill"><span class="sw" style="background:var(--gate)"></span>gate — para e aguarda ação real do cliente</span>
+  <span class="pill"><span class="sw" style="background:var(--stop)"></span>retido / recusado (não gera oportunidade)</span>
+  <span class="pill">🔑 o funil só anda com <b>evento real</b> — os gates são honestos, não mock</span>
+</div>
+<div class="foot">
+  Fluxo real: <code>Funil_Evento__e</code> → <code>FunilOrquestrador</code> (system mode) → lógica pura de cada estágio (<code>CalcularScoreLead</code>/<code>QualificarLead</code>/<code>ExecutarNBA</code>) →
+  persiste <code>Estagio_Funil__c</code> e publica o próximo salto. Gates: Onboarding aguarda <code>ContentDocumentLink</code> real; Ativação aguarda a decisão da NBA no chat (<code>NbaAceita</code>/<code>NbaRecusada</code>).
+</div>
+
+<script>
+// ---- DADOS REAIS (org somaOrg · 2026-08-08 · leads FUNILPME) ----
+const ORG = "https://trailsignup-2979e1c6606a3b.lightning.force.com/lightning/r";
+const url = (obj,id)=>`${ORG}/${obj}/${id}/view`;
+const LEADS = [
+  { key:"G", name:"TechPecas Distribuidora", porte:"Grande", rev:"R$ 8 mi · 120 func.",
+    score:100, qual:"Qualificado", path:["Nutricao","Qualificacao","Conversao","Onboarding","Ativacao","Oportunidade"],
+    offer:"Antecipação de Recebíveis — alto potencial", decision:"aceita",
+    products:"Conta_Corrente · Antecipacao · PIX", finalStage:"Concluído", slack:"onboarding · Case 00001391",
+    links:[ {l:"Conta",obj:"Account",id:"001ak00003G0LrKAAV"}, {l:"Lead",obj:"Lead",id:"00Qak00000p7E0rEAE"},
+            {l:"Oportunidade",obj:"Opportunity",id:"006ak00000Y5ACrAAN"}, {l:"Caso onboarding",obj:"Case",id:"500ak000031wXuMAAU"} ],
+    outcome:{cls:"win", txt:"✅ OPORTUNIDADE gerada", sub:"“TechPecas — Antecipacao de Recebiveis” · Prospecting · cliente aceitou a NBA no chat"} },
+  { key:"M", name:"Bistro Central", porte:"Médio", rev:"R$ 3 mi · 80 func.",
+    score:100, qual:"Qualificado", path:["Nutricao","Qualificacao","Conversao","Onboarding","Ativacao"],
+    offer:"Adquirência + Cartão Corporativo — Pacote PME", decision:"recusa",
+    products:"Conta_Corrente · PIX", finalStage:"Concluído", slack:"onboarding · Case 00001392",
+    links:[ {l:"Conta",obj:"Account",id:"001ak00003G0LrLAAV"}, {l:"Lead",obj:"Lead",id:"00Qak00000p7E0sEAE"},
+            {l:"Caso follow‑up",obj:"Case",id:"500ak000031wLJlAAM"}, {l:"Caso onboarding",obj:"Case",id:"500ak000031wXuNAAU"} ],
+    outcome:{cls:"lose", txt:"🟠 Oferta recusada → Caso de follow‑up", sub:"“Follow-up de oferta recusada: Bistro Central” · Officer retoma depois · sem oportunidade"} },
+  { key:"P", name:"Oficina do João", porte:"Pequeno", rev:"R$ 400 mil · 8 func.",
+    score:60, qual:"Em_Análise", path:["Nutricao","Qualificacao"], blockedAt:"Qualificacao",
+    offer:null, decision:null, products:"—", finalStage:"Qualificado (retido)", slack:"—",
+    links:[ {l:"Lead (retido)",obj:"Lead",id:"00Qak00000p7E0tEAE"} ],
+    outcome:{cls:"hold", txt:"⏸ Retido em qualificação (score 60 < 70)", sub:"Não converte automaticamente — permanece em nutrição; nenhum canal Slack, nenhuma conta criada"} },
+];
+
+const STAGE_LABELS = {
+  Nutricao:"Nutrição / Score", Qualificacao:"Qualificação", Conversao:"Conversão",
+  Onboarding:"Onboarding (gate de docs)", Ativacao:"Ativação + NBA (gate de oferta)", Oportunidade:"Oportunidade"
+};
+const GATE_TEXT = {
+  Onboarding:{ waitMsg:"Onboarding abre o canal no Slack e <b>PARA</b> — aguarda o cliente enviar os documentos.", act:"📎 cliente envia o Contrato Social pelo chat → <code>DocsRecebidos</code>" },
+  Ativacao:{ waitMsg:"Conta ativada com produtos base; o Agente de Ativação <b>entrega a oferta (NBA)</b> e <b>PARA</b>.", act:"cliente decide no chat → <code>NbaAceita</code> / <code>NbaRecusada</code>" }
+};
+
+const byId=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let running=false;
+
+const ctr=byId('controls');
+LEADS.forEach((l,i)=>{
+  const b=document.createElement('button');
+  b.className='lead-btn'; b.dataset.i=i;
+  b.innerHTML=`<span class="porte ${l.key}">${l.porte}</span><span>${l.name}</span><span class="rev">${l.rev}</span>`;
+  b.onclick=()=>{ if(!running) runLead(i); };
+  ctr.appendChild(b);
+});
+const runAll=document.createElement('button');
+runAll.className='runall'; runAll.textContent='▶ Rodar os 3 leads';
+runAll.onclick=async()=>{ if(running)return; for(let i=0;i<LEADS.length;i++){ await runLead(i);} };
+ctr.appendChild(runAll);
+const rst=document.createElement('button');
+rst.className='reset'; rst.textContent='↺ Limpar'; rst.onclick=()=>{ if(!running) resetAll(); };
+ctr.appendChild(rst);
+
+function resetAll(){
+  document.querySelectorAll('.node,.layer,.cbar,.stg').forEach(n=>n.classList.remove('on','done','lit','pulse','dim','active','passed','waiting','blocked'));
+  document.querySelectorAll('.lead-btn').forEach(n=>n.classList.remove('active'));
+  byId('ch-info').textContent='— escolha um lead acima —';
+  byId('ch-gate-info').textContent='Gates: enviar documentos · decidir a oferta (NBA)';
+  byId('fork-mark').textContent='';
+  ['name:Registro —','score:—','qual:—','stage:—','prod:—','slack:—'].forEach(p=>{const[k,v]=p.split(':');byId('crm-'+k).textContent=v;});
+  byId('crm-out').className='outcome'; byId('crm-out').innerHTML='';
+  byId('crm-links').className='org-links'; byId('crm-links').innerHTML='';
+  setStatus('PRONTO','Escolha um lead PME acima, ou clique em “Rodar os 3 leads”.');
+}
+function setStatus(step,msg){ byId('st-step').textContent=step; byId('st-msg').innerHTML=msg; }
+// Logo oficial da Salesforce para cada link "Abrir na org"
+const CLOUD_SVG='<img class="cl" src="../assets/salesforce-logo.png" alt="Salesforce">';
+function renderLinks(L){
+  const box=byId('crm-links'); box.innerHTML='';
+  const title=document.createElement('div'); title.className='ol-title'; title.textContent='🔗 Abrir na org (Salesforce)';
+  box.appendChild(title);
+  (L.links||[]).forEach(k=>{
+    const a=document.createElement('a');
+    a.href=url(k.obj,k.id); a.target='_blank'; a.rel='noopener';
+    a.innerHTML=CLOUD_SVG; a.appendChild(document.createTextNode(k.l));
+    box.appendChild(a);
+  });
+  box.classList.add('show');
+}
+function centerOf(el){const s=byId('stage').getBoundingClientRect();const r=el.getBoundingClientRect();return{x:r.left-s.left+r.width/2,y:r.top-s.top+r.height/2};}
+async function flyTo(a,b,ms=560){const p=byId('packet');const A=centerOf(a),B=centerOf(b);
+  p.style.transition='none';p.style.left=A.x+'px';p.style.top=A.y+'px';p.classList.add('go');
+  await sleep(20);p.style.transition=`left ${ms}ms cubic-bezier(.5,0,.3,1),top ${ms}ms cubic-bezier(.5,0,.3,1)`;
+  p.style.left=B.x+'px';p.style.top=B.y+'px';await sleep(ms);}
+
+async function runLead(i){
+  running=true; resetAll();
+  const L=LEADS[i];
+  document.querySelectorAll('.lead-btn')[i].classList.add('active');
+
+  // Channel
+  byId('L-channel').classList.add('lit'); byId('ch-app').classList.add('on'); byId('ch-lead').classList.add('on');
+  byId('ch-info').textContent=`${L.name} · ${L.porte} · ${L.rev}`;
+  byId('crm-name').textContent=L.name;
+  setStatus('CANAL', `Lead <b>${L.name}</b> (${L.porte}) entra no funil pelo Chat do App.`);
+  await sleep(700);
+
+  // Control plane wakes
+  await flyTo(byId('ch-lead'), byId('cp-orch'));
+  byId('L-belt').classList.add('lit');
+  for(const b of ['cp-orch','cp-gov','cp-obs']){ byId(b).classList.add('pulse'); await sleep(160);}
+  await sleep(200);
+
+  // Walk the belt
+  for(let s=0;s<L.path.length;s++){
+    const stg=L.path[s];
+    const el=byId('s-'+stg);
+    if(s>0){ const prev=byId('s-'+L.path[s-1]); prev.classList.remove('active'); prev.classList.add('passed'); }
+    await flyTo(byId(s===0?'cp-orch':'s-'+L.path[s-1]), el, 480);
+    el.classList.add('active');
+
+    // side-effects per stage
+    if(stg==='Nutricao'){ byId('crm-score').textContent=L.score;
+      setStatus('1 · NUTRIÇÃO', `Agente de Captação enriquece e pontua → <b>score ${L.score}</b>. Telemetria ao Data Cloud.`); }
+    else if(stg==='Qualificacao'){ byId('crm-qual').textContent=L.qual;
+      byId('crm-stage').textContent='Qualificado';
+      setStatus('2 · QUALIFICAÇÃO', `QualificarLead → <b>${L.qual}</b> ${L.blockedAt?'(&lt; 70: não converte)':'(≥ 70: segue para conversão)'}.`); }
+    else if(stg==='Conversao'){ byId('crm-stage').textContent='Convertido';
+      setStatus('3 · CONVERSÃO', `Lead vira <b>Account + Contact</b> (Database.convertLead). O funil de conta começa.`); }
+    else if(stg==='Onboarding'){
+      byId('crm-stage').textContent='Onboarding'; byId('crm-slack').textContent=L.slack;
+      el.classList.add('waiting'); byId('ch-gate').classList.add('on');
+      byId('ch-gate-info').innerHTML=GATE_TEXT.Onboarding.act;
+      setStatus('4 · GATE · DOCS', GATE_TEXT.Onboarding.waitMsg);
+      await sleep(1100);
+      // client acts
+      await flyTo(byId('ch-gate'), el, 520);
+      el.classList.remove('waiting');
+      setStatus('4 · DOCS RECEBIDOS', `Documento real chegou (ContentDocumentLink) → gate destrava → <code>Ativação</code>.`);
+    }
+    else if(stg==='Ativacao'){
+      byId('crm-stage').textContent='Ativado'; byId('crm-prod').textContent='Conta_Corrente · PIX';
+      el.classList.add('waiting'); byId('ch-gate').classList.add('on');
+      byId('ch-gate-info').innerHTML=`Oferta ao cliente: <b>${L.offer}</b>`;
+      setStatus('5 · GATE · NBA', `${GATE_TEXT.Ativacao.waitMsg}<br>Oferta: <b>${L.offer}</b>`);
+      await sleep(1200);
+      await flyTo(byId('ch-gate'), el, 520);
+      el.classList.remove('waiting');
+      if(L.decision==='aceita'){ byId('crm-prod').textContent=L.products;
+        setStatus('5 · NBA ACEITA', `Cliente <b>aceitou</b> → upsell ativado (${L.products}) → <code>Oportunidade</code>.`); }
+      else { el.classList.add('passed');
+        setStatus('5 · NBA RECUSADA', `Cliente <b>recusou</b> → gera <b>Caso de follow‑up</b> e encerra em Concluído.`); }
+    }
+    else if(stg==='Oportunidade'){ byId('crm-stage').textContent='Concluído';
+      setStatus('6 · OPORTUNIDADE', `GerarOportunidade cria a Opportunity (dono = officer real). Fim da jornada.`); }
+    await sleep(stg.startsWith('On')||stg.startsWith('At')?300:650);
+  }
+
+  // Blocked lead: mark the stop
+  if(L.blockedAt){ const el=byId('s-'+L.blockedAt); el.classList.remove('active'); el.classList.add('blocked'); }
+  else { const last=byId('s-'+L.path[L.path.length-1]); last.classList.remove('active'); last.classList.add(L.decision==='recusa'?'passed':'passed'); }
+
+  // CRM final + outcome + Data Cloud
+  byId('L-crm').classList.add('lit'); byId('crm').classList.add('on');
+  byId('crm-stage').textContent=L.finalStage;
+  byId('crm-tele').classList.add('on');
+  if(L.decision==='recusa') byId('fork-mark').textContent='';
+  await flyTo(byId('s-'+(L.blockedAt||L.path[L.path.length-1])), byId('crm'), 560);
+  const o=byId('crm-out'); o.className='outcome show '+L.outcome.cls;
+  o.innerHTML=`${L.outcome.txt}<small>${L.outcome.sub}</small>`;
+  renderLinks(L);
+  byId('crm').classList.add('done');
+  await sleep(1600);
+  running=false;
+}
+</script>
+</body>
+</html>

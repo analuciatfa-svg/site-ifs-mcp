@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<!--
+  consignado-clt.html (Site das IFs V2) — "Ver simulação" da jornada COMERCIAL
+  do Consignado. Anima como o Orquestrador Comercial identifica o cliente por
+  CPF e deriva, em sequência, para os Especialistas (Oferta → Negociação →
+  Assinatura → Liberação), com a Opportunity (PROP-<cpf>) avançando de estágio
+  a cada ação: Oferta_Enviada → Condicoes_Confirmadas → Contrato_Assinado →
+  Credito_Liberado (Closed Won). Espelha o padrão visual do atendimento-agentico.
+  Os números são os REAIS do E2E provado ao vivo (Juliana Reis, PROP-444).
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Consignado Agêntico · Banco Digital — o Orquestrador Comercial deriva para os Especialistas</title>
+<style>
+  :root{
+    --ink:#0a2540; --ink2:#123a63; --accent:#00b3ff; --accent2:#0a55f5;
+    --paper:#eaf3fb; --paper2:#dbeafe; --card:#ffffff; --line:#c7ddf0;
+    --ok:#16a34a; --n2:#0a55f5; --gate:#b45309; --mut:#5b7a99;
+    --shadow:0 10px 30px rgba(10,37,64,.10);
+    --shadow2:0 18px 48px rgba(10,37,64,.18);
+    --glow:0 0 0 3px rgba(0,179,255,.28), 0 0 28px rgba(0,179,255,.55);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%}
+  body{
+    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #f4f9ff 0%, transparent 60%),
+      radial-gradient(1000px 500px at 110% 10%, #eef6ff 0%, transparent 55%),
+      linear-gradient(180deg,#f7fbff 0%, #e9f3fc 100%);
+    min-height:100vh; overflow-x:hidden;
+  }
+  header{padding:58px 30px 6px}
+  h1{font-size:26px;margin:0;letter-spacing:-.5px;font-weight:800}
+  h1 .em{color:var(--accent2)}
+  .sub{color:var(--mut);font-size:14px;margin-top:4px;font-weight:600}
+  .sf-badge{position:absolute;top:20px;right:30px;display:flex;align-items:center;gap:8px;color:var(--accent2);font-weight:800;font-size:15px}
+  .sf-badge .sf-logo{height:30px;width:auto;flex:none}
+
+  /* ---- Controls ---- */
+  .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 30px 6px}
+  .runall{background:linear-gradient(135deg,var(--accent2),var(--accent));color:#fff;border:none;
+    border-radius:12px;padding:11px 18px;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 8px 20px rgba(10,85,245,.35);transition:.18s}
+  .runall:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(10,85,245,.5)}
+  .runall:disabled{opacity:.5;cursor:default;transform:none}
+  .reset{background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:11px 14px;font-weight:800;font-size:13px;cursor:pointer;color:var(--ink)}
+  .cpf-tag{margin-left:auto;font-size:12.5px;color:var(--mut);font-weight:700;display:flex;align-items:center;gap:7px}
+  .cpf-tag b{color:var(--ink2)}
+
+  /* ---- Stage ---- */
+  .stage{position:relative;display:grid;grid-template-columns:1fr 1fr 1.5fr 1.15fr;gap:14px;
+    padding:14px 30px 20px;align-items:stretch;min-height:540px}
+  .layer{background:rgba(255,255,255,.55);border:1.5px solid var(--line);border-radius:20px;padding:14px 12px;
+    display:flex;flex-direction:column;position:relative;backdrop-filter:blur(3px)}
+  .layer > .lname{font-size:12.5px;font-weight:900;text-transform:uppercase;letter-spacing:.6px;color:var(--ink2);text-align:center;margin-bottom:12px}
+  .layer > .lname small{display:block;font-weight:700;letter-spacing:0;text-transform:none;color:var(--mut);font-size:11px;margin-top:2px}
+  .layer.lit{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,179,255,.25), var(--shadow2);background:rgba(255,255,255,.85)}
+
+  .node{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:11px 12px;margin-bottom:10px;
+    box-shadow:var(--shadow);transition:.25s;position:relative}
+  .node .t{font-weight:800;font-size:13px;display:flex;align-items:center;gap:8px}
+  .node .d{font-size:11.5px;color:var(--mut);margin-top:3px;line-height:1.35}
+  .node .ic{font-size:17px;width:22px;text-align:center}
+  .node.on{border-color:var(--accent2);box-shadow:var(--glow);transform:translateY(-2px)}
+  .node.done{border-color:var(--ok)}
+  .node.done .t:after{content:"✓";margin-left:auto;color:var(--ok);font-weight:900}
+  .node.dim{opacity:.4;filter:saturate(.5)}
+
+  /* Orchestrator control-plane bars */
+  .cplane{background:linear-gradient(180deg,#0e2f57,#0a2540);border-radius:14px;padding:10px;margin-bottom:10px;box-shadow:var(--shadow2)}
+  .cplane .cp-title{color:#bfe6ff;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;text-align:center;margin-bottom:8px}
+  .cbar{background:rgba(255,255,255,.08);color:#eaf6ff;border-radius:8px;padding:6px 10px;font-size:11.5px;font-weight:700;margin:5px 0;
+    border:1px solid rgba(255,255,255,.12);transition:.2s;display:flex;align-items:center;gap:7px}
+  .cbar.pulse{background:linear-gradient(90deg,var(--accent2),var(--accent));border-color:transparent;box-shadow:0 6px 16px rgba(0,179,255,.4)}
+  .cbar .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
+  .cbar.pulse .dot{background:#fff;box-shadow:0 0 8px #fff}
+
+  .id-verdict{margin-top:8px;background:#fff;border:2px dashed var(--line);border-radius:12px;padding:10px;text-align:center;min-height:60px;
+    display:flex;flex-direction:column;justify-content:center;transition:.25s}
+  .id-verdict.show{border-color:var(--accent2);border-style:solid;box-shadow:var(--glow)}
+  .id-verdict .cat{font-weight:900;font-size:14px}
+  .id-verdict .meta{font-size:11px;color:var(--mut);margin-top:3px;font-weight:700}
+
+  .specialist{opacity:.5}
+  .specialist.candidate{opacity:1}
+  .specialist .step-badge{position:absolute;top:9px;right:10px;font-size:10px;font-weight:900;color:#fff;
+    background:var(--n2);border-radius:20px;padding:2px 8px}
+
+  /* CRM / Opportunity card */
+  .crm-card .row{display:flex;justify-content:space-between;font-size:11.5px;padding:4px 0;border-bottom:1px dashed #e6eef7}
+  .crm-card .row .k{color:var(--mut);font-weight:700}
+  .crm-card .row .v{font-weight:800}
+  .crm-card .row .v.hl{color:var(--accent2)}
+  .stage-pill{display:inline-block;font-size:11px;font-weight:900;padding:3px 9px;border-radius:20px;
+    background:#eef4fb;color:var(--ink2);border:1px solid var(--line);transition:.3s}
+  .stage-pill.won{background:linear-gradient(135deg,var(--ok),#0f9d58);color:#fff;border-color:transparent}
+  .artifact{background:#f5faff;border:1px solid var(--line);border-radius:10px;padding:8px;font-size:11px;line-height:1.4;margin-top:8px;
+    max-height:0;overflow:hidden;transition:max-height .5s ease, padding .3s;padding-top:0;padding-bottom:0}
+  .artifact.show{max-height:220px;padding:8px}
+  .artifact .lab{font-weight:900;color:var(--accent2);font-size:10px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+
+  /* pulse packet */
+  #packet{position:absolute;width:20px;height:20px;border-radius:50%;
+    background:radial-gradient(circle at 35% 35%,#fff,var(--accent) 55%,var(--accent2));
+    box-shadow:0 0 18px 4px rgba(0,179,255,.75);opacity:0;z-index:50;transform:translate(-50%,-50%);pointer-events:none}
+  #packet.go{opacity:1}
+
+  .status{padding:0 30px 22px}
+  .statusbar{background:#0a2540;color:#dcefff;border-radius:14px;padding:12px 16px;font-size:13px;font-weight:700;
+    display:flex;align-items:center;gap:12px;box-shadow:var(--shadow2);min-height:46px}
+  .statusbar .step{color:var(--accent);font-weight:900;background:rgba(0,179,255,.14);padding:3px 10px;border-radius:20px;font-size:11px;letter-spacing:.4px}
+  .trust{margin:8px 30px 0;background:linear-gradient(90deg,#0e2f57,#123a63);color:#cfe9ff;border-radius:12px;text-align:center;
+    padding:8px;font-size:11.5px;font-weight:700;letter-spacing:.3px;border:1px solid rgba(255,255,255,.1)}
+  .trust b{color:#8fd6ff}
+  .orgbar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;padding:6px 30px 4px;font-size:12px}
+  .orgbar .lbl{color:var(--mut);font-weight:800}
+  .orgbar a{display:inline-flex;align-items:center;gap:5px;color:var(--accent2);font-weight:700;text-decoration:none;
+    border:1px solid var(--line);border-radius:20px;padding:5px 12px;background:rgba(255,255,255,.75);transition:.15s}
+  .orgbar a:hover{border-color:var(--accent);background:#fff}
+  .foot{padding:4px 30px 30px;color:var(--mut);font-size:11px}
+  .foot code{background:#e7f1fb;padding:1px 6px;border-radius:6px;color:var(--ink2);font-weight:700}
+  @media (max-width:1100px){.stage{grid-template-columns:1fr 1fr}}
+  .voltar{position:fixed;top:16px;left:16px;z-index:30;background:rgba(255,255,255,.92);
+    border:1px solid var(--line);border-radius:20px;padding:7px 14px;font-size:12.5px;font-weight:700;
+    color:var(--accent2);text-decoration:none;box-shadow:0 2px 8px rgba(13,27,42,.12);transition:.15s}
+  .voltar:hover{background:#fff;box-shadow:0 6px 16px rgba(13,27,42,.18)}
+</style>
+</head>
+<body>
+<a class="voltar" href="../index.html?aba=3">← Voltar ao Hub</a>
+<div class="sf-badge"><img class="sf-logo" src="../assets/salesforce-logo.png" alt="Salesforce"> Agentforce</div>
+<header>
+  <h1>Consignado Agêntico — <span class="em">o Orquestrador Comercial deriva para os Especialistas</span></h1>
+  <div class="sub">Banco Digital · jornada Comercial de Crédito Consignado · identifica por <b>CPF</b> · números <b>reais</b> do E2E provado ao vivo (Juliana Reis · PROP‑444)</div>
+</header>
+
+<div class="controls" id="controls">
+  <button class="runall" id="run">▶ Rodar a jornada</button>
+  <button class="reset" id="rst">↺ Limpar</button>
+  <span class="cpf-tag">🪪 Cliente: <b>Juliana Reis</b> · CPF <b>444.444.444‑44</b> · oferta <b>R$ 8.000</b></span>
+</div>
+
+<div class="orgbar">
+  <span class="lbl">🔗 Abrir na org:</span>
+  <a href="https://trailsignup-2979e1c6606a3b.lightning.force.com/lightning/o/Opportunity/list" target="_blank" rel="noopener">Propostas (Opportunity)</a>
+  <span class="lbl" style="font-weight:400">· cada proposta é <code style="font-size:10px">PROP‑&lt;cpf&gt;</code>, com o funil visível no Kanban.</span>
+</div>
+
+<div class="trust">🔒 <b>Trust Layer</b> — Guardrails · Zero‑Data Retention · Data masking · Prompt‑injection defense &nbsp;|&nbsp; atravessa todas as camadas</div>
+
+<div class="stage" id="stage">
+  <div id="packet"></div>
+
+  <!-- 1 · CHANNEL -->
+  <div class="layer" id="L-channel">
+    <div class="lname">Channel Layer<small>canal com o cliente</small></div>
+    <div class="node" id="ch-app"><div class="t"><span class="ic">📱</span>Chat do App</div><div class="d">Cliente no aplicativo (MIAW · Agentforce ao vivo)</div></div>
+    <div class="node" id="ch-in" style="margin-top:auto"><div class="t"><span class="ic">🪪</span>Identificação por CPF</div><div class="d" id="ch-utter">— clique “Rodar a jornada” —</div></div>
+  </div>
+
+  <!-- 2 · ORCHESTRATOR -->
+  <div class="layer" id="L-orch">
+    <div class="lname">Super Agent Layer<small>Orquestrador Comercial</small></div>
+    <div class="cplane">
+      <div class="cp-title">Enterprise Agentic Control Plane</div>
+      <div class="cbar" id="cp-orch"><span class="dot"></span>Orchestration &amp; Runtime</div>
+      <div class="cbar" id="cp-reg"><span class="dot"></span>Agents Catalog / Registry</div>
+      <div class="cbar" id="cp-gov"><span class="dot"></span>Real‑time Governance</div>
+    </div>
+    <div class="node" id="orch-route"><div class="t"><span class="ic">🎯</span>Orquestrador do Consignado</div>
+      <div class="d">Identifica o cliente pelo CPF e roteia para o especialista de cada etapa</div></div>
+    <div class="id-verdict" id="verdict">
+      <div class="cat" id="v-cat">aguardando…</div>
+      <div class="meta" id="v-meta"></div>
+    </div>
+  </div>
+
+  <!-- 3 · SPECIALISTS -->
+  <div class="layer" id="L-spec">
+    <div class="lname">Business Apps Agents<small>Especialistas em sequência</small></div>
+    <div class="node specialist" id="sp-oferta"><span class="step-badge">1</span><div class="t"><span class="ic">🏷️</span>Especialista de Oferta</div><div class="d">Puxa a oferta pré‑aprovada real · <code style="font-size:10px">registrar_proposta</code></div></div>
+    <div class="node specialist" id="sp-negociacao"><span class="step-badge">2</span><div class="t"><span class="ic">🧮</span>Especialista de Negociação</div><div class="d">Recalcula a parcela e fixa as condições · <code style="font-size:10px">negociar_parcelas</code></div></div>
+    <div class="node specialist" id="sp-assinatura"><span class="step-badge">3</span><div class="t"><span class="ic">✍️</span>Especialista de Formalização</div><div class="d">Assinatura digital do contrato (CCB) · <code style="font-size:10px">assinar_contrato</code></div></div>
+    <div class="node specialist" id="sp-liberacao"><span class="step-badge">4</span><div class="t"><span class="ic">💰</span>Especialista de Liberação</div><div class="d">Confirma a conta e libera o depósito · <code style="font-size:10px">liberar_credito</code></div></div>
+  </div>
+
+  <!-- 4 · CRM / OPPORTUNITY -->
+  <div class="layer" id="L-crm">
+    <div class="lname">Business Apps · CRM<small>estado real no Salesforce</small></div>
+    <div class="node crm-card" id="crm">
+      <div class="t"><span class="ic">🗂️</span><span id="crm-num">PROP‑444.444.444‑44</span></div>
+      <div class="row"><span class="k">Cliente</span><span class="v" id="crm-nome">Juliana Reis</span></div>
+      <div class="row"><span class="k">Valor</span><span class="v hl" id="crm-valor">R$ 8.000,00</span></div>
+      <div class="row"><span class="k">Parcelas</span><span class="v" id="crm-parc">—</span></div>
+      <div class="row"><span class="k">Estágio</span><span class="v"><span class="stage-pill" id="crm-stage">—</span></span></div>
+      <div class="artifact" id="crm-art"><div class="lab">Fala do especialista · retorno real da ação</div><div id="crm-art-body"></div></div>
+    </div>
+    <div class="node" id="crm-kanban" style="margin-top:auto"><div class="t"><span class="ic">📊</span>Funil visível (Kanban)</div><div class="d" id="crm-narr">— cada ação avança o StageName da Opportunity —</div></div>
+  </div>
+</div>
+
+<div class="status">
+  <div class="statusbar"><span class="step" id="st-step">PRONTO</span><span id="st-msg">Clique “Rodar a jornada” para ver o Orquestrador derivar por Oferta → Negociação → Assinatura → Liberação.</span></div>
+</div>
+
+<div class="foot">
+  Fluxo real (variante objetos‑padrão): <code>registrar_proposta</code> → <code>negociar_parcelas(confirmar=true)</code> →
+  <code>assinar_contrato</code> → <code>liberar_credito</code>, cada ação gravando na <code>Opportunity</code> via <code>ConsignadoService</code>
+  (estágio lógico → StageName nativo). Nada mockado: os números abaixo são os do E2E provado ao vivo (R$ 8.000 · 24x · R$ 412,97 · Closed Won).
+</div>
+
+<script>
+// ---- Passos da jornada COMERCIAL (dados reais do E2E · Juliana / PROP-444) ----
+const STEPS = [
+  { spec:"oferta",
+    step:"1 · OFERTA",
+    cp:["cp-orch","cp-reg"],
+    stage:"Oferta_Enviada", stagePill:"Prospecting", parc:"24x de R$ 412,97",
+    verdict:"Cliente identificado por CPF", vmeta:"CPF 444.444.444‑44 · oferta pré‑aprovada localizada",
+    art:"Juliana, sua oferta pré‑aprovada é de R$ 8.000,00 em até 24 parcelas de R$ 412,97 (taxa de 1,79% ao mês).",
+    narr:"Oportunidade criada/localizada (PROP‑444) · StageName <b>Prospecting</b>.",
+    msg:"O <b>Especialista de Oferta</b> puxa a oferta pré‑aprovada REAL do Salesforce — <b>R$ 8.000 · 24x · R$ 412,97</b>." },
+  { spec:"negociacao",
+    step:"2 · NEGOCIAÇÃO",
+    cp:["cp-orch"],
+    stage:"Condicoes_Confirmadas", stagePill:"Proposal/Quote", parc:"24x de R$ 412,97 (confirmado)",
+    verdict:"Condições confirmadas", vmeta:"cliente confirmou 24x · condições travadas",
+    art:"Condições confirmadas: 24x de R$ 412,97. Podemos seguir para a assinatura.",
+    narr:"Estágio avança para <b>Proposal/Quote</b> (Condições Confirmadas).",
+    msg:"O <b>Especialista de Negociação</b> recalcula e, com o “sim” do cliente, <b>fixa as condições</b> (gate honesto antes de assinar)." },
+  { spec:"assinatura",
+    step:"3 · ASSINATURA",
+    cp:["cp-orch","cp-gov"],
+    stage:"Contrato_Assinado", stagePill:"Negotiation/Review", parc:"24x de R$ 412,97",
+    verdict:"Contrato assinado", vmeta:"CCB assinada · 2026‑08‑13 06:39",
+    art:"Contrato assinado com sucesso! O crédito de R$ 8.000,00 será depositado na sua conta.",
+    narr:"Estágio avança para <b>Negotiation/Review</b> (Contrato Assinado → pós‑venda).",
+    msg:"O <b>Especialista de Formalização</b> registra a <b>assinatura digital (CCB)</b> e carimba a data — só após a confirmação das condições." },
+  { spec:"liberacao",
+    step:"4 · LIBERAÇÃO",
+    cp:["cp-orch","cp-gov","cp-reg"],
+    stage:"Credito_Liberado", stagePill:"Closed Won", parc:"24x de R$ 412,97", won:true,
+    verdict:"Crédito liberado", vmeta:"Ag 0001 · CC 12345‑6 · depósito 2026‑08‑13",
+    art:"Crédito de R$ 8.000,00 liberado para depósito na agência 0001, conta 12345‑6. Obrigado por confiar no Banco Digital!",
+    narr:"Estágio final <b>Closed Won</b> — proposta ganha, crédito depositado. 🎉",
+    msg:"O <b>Especialista de Liberação</b> confirma a conta e <b>libera o depósito</b> — a Opportunity fecha em <b>Closed Won</b>." },
+];
+
+const byId = id=>document.getElementById(id);
+const sleep = ms=>new Promise(r=>setTimeout(r,ms));
+let running=false;
+
+byId('run').onclick=()=>{ if(!running) runJourney(); };
+byId('rst').onclick=()=>{ if(!running) resetAll(); };
+
+function resetAll(){
+  document.querySelectorAll('.node,.layer,.cbar').forEach(n=>n.classList.remove('on','done','lit','pulse','dim'));
+  document.querySelectorAll('.specialist').forEach(n=>n.classList.remove('candidate'));
+  byId('verdict').classList.remove('show');
+  byId('v-cat').textContent='aguardando…'; byId('v-meta').textContent='';
+  byId('ch-utter').textContent='— clique “Rodar a jornada” —';
+  byId('crm-parc').textContent='—';
+  byId('crm-stage').textContent='—'; byId('crm-stage').classList.remove('won');
+  byId('crm-art').classList.remove('show'); byId('crm-art-body').textContent='';
+  byId('crm-narr').textContent='— cada ação avança o StageName da Opportunity —';
+  setStatus('PRONTO','Clique “Rodar a jornada” para ver o Orquestrador derivar por Oferta → Negociação → Assinatura → Liberação.');
+}
+function setStatus(step,msg){ byId('st-step').textContent=step; byId('st-msg').innerHTML=msg; }
+
+function centerOf(el){ const s=byId('stage').getBoundingClientRect(); const r=el.getBoundingClientRect();
+  return { x:r.left-s.left+r.width/2, y:r.top-s.top+r.height/2 }; }
+async function flyTo(fromEl,toEl,ms=620){
+  const p=byId('packet'); const a=centerOf(fromEl), b=centerOf(toEl);
+  p.style.transition='none'; p.style.left=a.x+'px'; p.style.top=a.y+'px'; p.classList.add('go');
+  await sleep(20); p.style.transition=`left ${ms}ms cubic-bezier(.5,0,.3,1), top ${ms}ms cubic-bezier(.5,0,.3,1)`;
+  p.style.left=b.x+'px'; p.style.top=b.y+'px'; await sleep(ms);
+}
+
+async function runJourney(){
+  running=true; byId('run').disabled=true; resetAll();
+
+  // 1 — Channel: cliente entra e se identifica por CPF
+  byId('L-channel').classList.add('lit');
+  byId('ch-app').classList.add('on');
+  byId('ch-in').classList.add('on');
+  byId('ch-utter').textContent='“Quero ver minha oferta de consignado. Meu CPF é 444.444.444‑44.”';
+  setStatus('1 · CANAL', 'Cliente conversa pelo <b>Chat do App</b> (MIAW ao vivo) e se identifica pelo <b>CPF</b>.');
+  await sleep(950);
+
+  // 2 — Orchestrator ganha o controle
+  await flyTo(byId('ch-in'), byId('orch-route'));
+  byId('L-orch').classList.add('lit');
+  byId('orch-route').classList.add('on');
+  for(const b of ['cp-orch','cp-reg','cp-gov']){ byId(b).classList.add('pulse'); await sleep(160); }
+  setStatus('2 · ORQUESTRADOR', '<b>Orquestrador do Consignado</b> assume: identifica o cliente e vai <b>derivando por etapa</b> para o especialista certo.');
+  await sleep(700);
+
+  // 3..N — cada especialista, em sequência, avança a Opportunity
+  byId('L-spec').classList.add('lit');
+  byId('L-crm').classList.add('lit');
+  for(let i=0;i<STEPS.length;i++){
+    const s=STEPS[i];
+    // control-plane highlight for this action
+    document.querySelectorAll('.cbar').forEach(b=>b.classList.remove('pulse'));
+    s.cp.forEach(id=>byId(id).classList.add('pulse'));
+    // verdict / routing note
+    byId('verdict').classList.add('show');
+    byId('v-cat').textContent=s.verdict;
+    byId('v-meta').textContent=s.vmeta;
+    // orchestrator derives to the specialist
+    document.querySelectorAll('.specialist').forEach(n=>{ n.classList.remove('candidate','on'); if(!n.classList.contains('done')) n.classList.add('dim'); });
+    const sp=byId('sp-'+s.spec); sp.classList.remove('dim'); sp.classList.add('candidate');
+    await flyTo(byId('orch-route'), sp, 640);
+    sp.classList.add('on');
+    setStatus(s.step, s.msg);
+    await sleep(820);
+    // specialist writes to the Opportunity (CRM)
+    await flyTo(sp, byId('crm'), 560);
+    byId('crm').classList.add('on');
+    byId('crm-parc').textContent=s.parc;
+    const pill=byId('crm-stage'); pill.textContent=s.stagePill; pill.classList.toggle('won', !!s.won);
+    byId('crm-art').classList.add('show'); byId('crm-art-body').textContent=s.art;
+    byId('crm-narr').innerHTML=s.narr;
+    sp.classList.remove('on'); sp.classList.add('done');
+    await sleep(1050);
+  }
+
+  byId('crm').classList.add('done');
+  byId('crm-kanban').classList.add('done');
+  setStatus('✓ CONCLUÍDO', 'Jornada comercial completa — <b>PROP‑444</b> em <b>Closed Won</b>, crédito liberado. Todas as escritas gravadas de verdade no Salesforce.');
+  byId('run').disabled=false; running=false;
+}
+</script>
+</body>
+</html>

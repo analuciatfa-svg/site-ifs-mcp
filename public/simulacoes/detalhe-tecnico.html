@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<!--
+  detalhe-tecnico.html (Site das IFs V2) — a camada TÉCNICA das jornadas ao vivo,
+  para audiências muito técnicas (arquitetos). Uma única página reutilizável,
+  parametrizada por ?j=consignado|atendimento|funil, na MESMA casca visual das
+  animações (mesmos tokens de marca). NÃO substitui as animações de negócio —
+  é o botão "🔬 Detalhe técnico" de cada card.
+
+  PRINCÍPIO (escolha da Ana): "Live + Reference separados".
+   ● AO VIVO   = comprovado no metadata da org (force-app) — nomes reais de
+                 agente, plannerType, ações Apex @InvocableMethod, objeto de estado.
+   ○ REFERÊNCIA = arquitetura-alvo (MCP Servers, Super Agent / Control Plane, A2A,
+                 Data Cloud como contexto/RAG) — ainda NÃO no ar nesta jornada.
+  Nada inventado: cada chip "ao vivo" tem lastro em um arquivo do repositório.
+  A Camada de Modelo é real (o Atlas raciocina sobre um LLM), mas o provedor NÃO
+  está fixado no metadata — por isso é descrita como "gerida pela plataforma,
+  intercambiável", sem afirmar um model ID.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detalhe Técnico das Jornadas Agênticas · Banco Digital — o que roda AO VIVO vs. arquitetura de referência</title>
+<style>
+  /* ---- Tokens de marca (idênticos às animações do Hub) ---- */
+  :root{
+    --ink:#0a2540; --ink2:#123a63; --accent:#00b3ff; --accent2:#0a55f5;
+    --paper:#eaf3fb; --paper2:#dbeafe; --card:#ffffff; --line:#c7ddf0;
+    --live:#16a34a; --ref:#b45309; --mut:#5b7a99;
+    --shadow:0 10px 30px rgba(10,37,64,.10);
+    --shadow2:0 18px 48px rgba(10,37,64,.18);
+    --glow:0 0 0 3px rgba(0,179,255,.28), 0 0 28px rgba(0,179,255,.55);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%}
+  body{
+    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #f4f9ff 0%, transparent 60%),
+      radial-gradient(1000px 500px at 110% 10%, #eef6ff 0%, transparent 55%),
+      linear-gradient(180deg,#f7fbff 0%, #e9f3fc 100%);
+    min-height:100vh; overflow-x:hidden;
+  }
+  header{padding:58px 30px 6px}
+  h1{font-size:26px;margin:0;letter-spacing:-.5px;font-weight:800}
+  h1 .em{color:var(--accent2)}
+  .sub{color:var(--mut);font-size:14px;margin-top:4px;font-weight:600;max-width:110ch;line-height:1.5}
+  .sf-badge{position:absolute;top:20px;right:30px;display:flex;align-items:center;gap:8px;color:var(--accent2);font-weight:800;font-size:15px}
+  .sf-badge .sf-logo{height:30px;width:auto;flex:none}
+
+  /* ---- Seletor de jornada ---- */
+  .jnav{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 30px 4px}
+  .jbtn{border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;
+    padding:9px 14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px;
+    transition:.18s;box-shadow:var(--shadow);text-decoration:none}
+  .jbtn:hover{transform:translateY(-2px);border-color:var(--accent)}
+  .jbtn.active{border-color:var(--accent2);box-shadow:var(--glow)}
+  .jbtn .ic{font-size:16px}
+
+  /* ---- Legenda live/ref ---- */
+  .legend{display:flex;gap:18px;flex-wrap:wrap;padding:12px 30px 2px;font-size:12px;color:var(--mut);font-weight:700}
+  .legend .p{display:inline-flex;align-items:center;gap:7px}
+  .badge{font-size:10.5px;font-weight:900;padding:2px 9px;border-radius:20px;color:#fff;letter-spacing:.4px;white-space:nowrap}
+  .badge.live{background:var(--live)}
+  .badge.ref{background:var(--ref)}
+  .badge.plat{background:var(--accent2)}
+
+  /* ---- Trilha vertical (as camadas AO VIVO) ---- */
+  .track{padding:8px 30px 8px;display:flex;flex-direction:column;gap:0}
+  .lyr{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:14px 16px;box-shadow:var(--shadow);position:relative}
+  .lyr.plat{background:linear-gradient(90deg,#0e2f57,#123a63);color:#cfe9ff;border-color:transparent}
+  .lyr.plat .lyr-name,.lyr.plat .lyr-what b{color:#8fd6ff}
+  .lyr.plat .lyr-what,.lyr.plat .lyr-proof{color:#cfe9ff}
+  .lyr.plat .chip{background:rgba(255,255,255,.10);color:#eaf6ff;border-color:rgba(255,255,255,.2)}
+  .lyr-head{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+  .lyr-ic{width:38px;height:38px;flex:none;border-radius:11px;display:grid;place-items:center;font-size:20px;
+    background:linear-gradient(150deg,#eaf5fe,#dbeafe);border:1px solid var(--line)}
+  .lyr.plat .lyr-ic{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.22)}
+  .lyr-name{font-size:15px;font-weight:900;color:var(--ink2);letter-spacing:-.2px}
+  .lyr-name small{display:block;font-weight:700;color:var(--mut);font-size:11px;letter-spacing:0;margin-top:1px}
+  .lyr-badge-wrap{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .lyr-what{font-size:12.5px;color:var(--ink);line-height:1.5;margin-top:9px}
+  .lyr-what b{color:var(--accent2)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+  .chip{font-size:11px;font-weight:800;background:#eef4fb;color:var(--ink2);border:1px solid var(--line);
+    border-radius:16px;padding:4px 10px;display:inline-flex;align-items:center;gap:5px}
+  .chip.act{background:#eefaf1;border-color:#bfe6cd;color:#0f7a3d}
+  .chip code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:10px}
+  .lyr-proof{font-size:11px;color:var(--mut);margin-top:9px;font-weight:700;display:flex;align-items:flex-start;gap:7px;line-height:1.45}
+  .lyr-proof .k{color:var(--live);font-weight:900;flex:none}
+  .lyr-proof code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:10px;
+    background:#e7f1fb;color:var(--ink2);border-radius:5px;padding:1px 5px;font-weight:700}
+  .lyr.plat .lyr-proof code{background:rgba(255,255,255,.14);color:#eaf6ff}
+  .conn{height:16px;width:2px;background:linear-gradient(180deg,var(--accent),transparent);margin:0 auto;
+    position:relative}
+  .conn:after{content:"▾";position:absolute;left:50%;bottom:-4px;transform:translateX(-50%);color:var(--accent);font-size:12px}
+
+  /* ---- Bloco de arquitetura de referência ---- */
+  .ref-block{margin:20px 30px 8px;border:1.5px dashed var(--ref);border-radius:18px;padding:16px 18px;
+    background:linear-gradient(180deg,rgba(180,83,9,.05),rgba(180,83,9,.02))}
+  .ref-block h2{font-size:16px;margin:0 0 2px;color:var(--ref);display:flex;align-items:center;gap:9px}
+  .ref-block .rsub{font-size:12.5px;color:var(--mut);font-weight:700;line-height:1.5;margin-bottom:12px}
+  .ref-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:11px}
+  .ref-card{background:#fff;border:1.5px solid var(--line);border-radius:13px;padding:12px 13px;box-shadow:var(--shadow)}
+  .ref-card .rt{font-weight:900;font-size:13px;color:var(--ink2);display:flex;align-items:center;gap:8px}
+  .ref-card .rd{font-size:11.5px;color:var(--mut);line-height:1.5;margin-top:6px}
+  .ref-card .rmap{font-size:11px;color:var(--ref);font-weight:800;margin-top:8px;line-height:1.4}
+
+  .trust{margin:14px 30px 0;background:linear-gradient(90deg,#0e2f57,#123a63);color:#cfe9ff;border-radius:12px;text-align:center;
+    padding:10px;font-size:12px;font-weight:700;letter-spacing:.3px;border:1px solid rgba(255,255,255,.1)}
+  .trust b{color:#8fd6ff}
+  .orgbar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;padding:14px 30px 4px;font-size:12px}
+  .orgbar .lbl{color:var(--mut);font-weight:800}
+  .orgbar a{display:inline-flex;align-items:center;gap:5px;color:var(--accent2);font-weight:700;text-decoration:none;
+    border:1px solid var(--line);border-radius:20px;padding:5px 12px;background:rgba(255,255,255,.75);transition:.15s}
+  .orgbar a:hover{border-color:var(--accent);background:#fff}
+  .foot{padding:12px 30px 34px;color:var(--mut);font-size:11px;line-height:1.6}
+  .foot code{background:#e7f1fb;padding:1px 6px;border-radius:6px;color:var(--ink2);font-weight:700;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:10px}
+  .voltar{position:fixed;top:16px;left:16px;z-index:30;background:rgba(255,255,255,.92);
+    border:1px solid var(--line);border-radius:20px;padding:7px 14px;font-size:12.5px;font-weight:700;
+    color:var(--accent2);text-decoration:none;box-shadow:0 2px 8px rgba(13,27,42,.12);transition:.15s}
+  .voltar:hover{background:#fff;box-shadow:0 6px 16px rgba(13,27,42,.18)}
+  @media (max-width:720px){ header{padding-top:64px} .sf-badge{top:14px;right:16px} }
+</style>
+</head>
+<body>
+<a class="voltar" href="../index.html?aba=3">← Voltar ao Hub</a>
+<div class="sf-badge"><img class="sf-logo" src="../assets/salesforce-logo.png" alt="Salesforce"> Agentforce</div>
+
+<header>
+  <h1>Detalhe Técnico — <span class="em" id="j-title">…</span></h1>
+  <div class="sub" id="j-sub">…</div>
+</header>
+
+<nav class="jnav" id="jnav"></nav>
+
+<div class="legend">
+  <span class="p"><span class="badge live">● AO VIVO</span> comprovado no metadata da org (nomes reais)</span>
+  <span class="p"><span class="badge ref">○ REFERÊNCIA</span> arquitetura-alvo — ainda não no ar nesta jornada</span>
+  <span class="p"><span class="badge plat">▲ PLATAFORMA</span> capacidade nativa Agentforce / Einstein</span>
+</div>
+
+<div class="track" id="track"></div>
+
+<section class="ref-block">
+  <h2>○ Arquitetura de referência <span style="font-size:12px;font-weight:700;color:var(--mut)">— para onde evolui, hoje ainda não acionado nesta jornada</span></h2>
+  <div class="rsub" id="ref-sub">Estas camadas aparecem no mapa de referência (aba 2 do Hub). São o norte de evolução — <b>não</b> estão em execução nesta jornada hoje, e por honestidade técnica ficam separadas do que roda ao vivo.</div>
+  <div class="ref-grid" id="ref-grid"></div>
+</section>
+
+<div class="trust">🔒 <b>Einstein Trust Layer</b> — Guardrails · Zero-Data Retention · Detecção de toxicidade · Data masking · Defesa a prompt injection · Auditoria &nbsp;|&nbsp; capacidade nativa da plataforma, atravessa todas as camadas</div>
+
+<div class="orgbar" id="orgbar"><span class="lbl">🔗 Abrir na org:</span></div>
+
+<div class="foot" id="foot"></div>
+
+<script>
+// ============================================================================
+// DADOS — 100% ancorados no metadata do repositório (force-app/main/default/…).
+// Cada camada "live" nomeia o artefato-prova. As camadas de referência e de
+// modelo/trust são compartilhadas (com nota por jornada quando útil).
+// ============================================================================
+const ORG = "https://trailsignup-2979e1c6606a3b.lightning.force.com";
+
+// Camadas de PLATAFORMA/REFERÊNCIA comuns às três jornadas -------------------
+const MODELO = {
+  ic:"🧠", plat:true, name:"Camada de Modelo (LLM)", small:"o raciocínio do planner",
+  what:"O planner <b>Atlas</b> raciocina sobre um <b>LLM gerido pela plataforma</b> (Einstein). O provedor <b>não está fixado no metadata</b> desta org — é intercambiável por design. <b>Modelo é commodity; o diferencial é o contexto e os workflows.</b>",
+  chips:[], proof:null
+};
+const TRUST_NOTE = null; // Trust Layer é a faixa fixa no rodapé da página
+
+const REF_CARDS = [
+  { rt:"🔌 Camada MCP (MCP Servers)", rd:"No mapa de referência, cada nuvem exporia suas capacidades como um MCP Server (protocolo do setor). Hoje, nesta jornada, as capacidades são <b>Ações Apex invocáveis</b> (<code>apex://</code>) — não servidores MCP.",
+    rmap:"Evolução: publicar as mesmas ações como MCP Server." },
+  { rt:"🕸️ Super Agent · Control Plane", rd:"Orquestração governada multi-plataforma (MuleSoft Agent Fabric): catálogo/registry de agentes, observabilidade e governança em tempo real acima de todos os agentes.",
+    rmap:"Hoje a orquestração vive no próprio planner Atlas do agente." },
+  { rt:"🤝 A2A · Agentes de terceiros", rd:"Interoperabilidade Agent-to-Agent com Azure Foundry, Google Vertex, Amazon Bedrock — orquestrar agentes externos pelo mesmo control plane.",
+    rmap:"Não acionado: a jornada roda 100% em agentes Agentforce." },
+  { rt:"🗄️ Data Cloud como Contexto (RAG)", rd:"Camada de contexto (vetorial semântico + grafo de ontologia) alimentando o agente por RAG antes de agir — a vantagem competitiva do mapa de referência.",
+    rmap:"Hoje o contexto vem de SOQL/estado no CRM, não de RAG no Data Cloud." },
+];
+
+// Jornadas -------------------------------------------------------------------
+const JOURNEYS = {
+  consignado: {
+    title:"Consignado Agêntico (Comercial por CPF)",
+    icon:"🏷️",
+    sub:"Cliente pede o consignado no chat do app; o agente identifica por CPF e conduz Oferta → Negociação → Assinatura → Liberação, gravando de verdade na Opportunity. Abaixo, o stack real que executa isso — cada item com o artefato-prova no metadata.",
+    org:[["Propostas (Opportunity)", ORG+"/lightning/o/Opportunity/list"]],
+    live:[
+      { ic:"📱", name:"Camada de Canal", small:"MIAW headless",
+        what:"Chat do app via <b>Messaging for In-App & Web (MIAW)</b>. Deployment do tipo <b>Custom Client / API</b>, consumido por uma ponte headless (não pelo widget web). Protocolo: <b>access-token → conversation → SSE</b>.",
+        chips:["Embedded Service Deployment","Custom Client (API)","SSE stream"],
+        proof:["Deployment <code>SOMA_Consignado_MIAW</code> · endpoint <code>*.my.salesforce-scrt.com</code> · ponte <code>servidor_ponte.py</code> + <code>miaw_client.py</code> (porta 8789)"] },
+      { ic:"🎯", name:"Orquestração · Planner", small:"Agentforce · Atlas",
+        what:"Agente <b>Consignado_Agent</b> (tipo <b>EinsteinServiceAgent</b>). O planejamento é feito pelo <b>Atlas Reasoning Engine</b> em modo multi-agente concorrente — ele lê o assunto, roteia entre tópicos e decide a ação.",
+        chips:["Consignado_Agent","EinsteinServiceAgent","Atlas__ConcurrentMultiAgentOrchestration"],
+        proof:["<code>bots/Consignado_Agent</code> · planner <code>genAiPlannerBundles/Consignado_Agent_v2</code> · executa como <code>soma_agent@…</code> (ações rodam <code>as user</code>)"] },
+      { ic:"🧩", name:"Tópicos / subagentes", small:"9 tópicos reais do planner",
+        what:"O planner deriva por <b>tópicos</b> especializados — cada etapa da jornada é um tópico com instruções próprias e escalação para humano quando preciso.",
+        chips:["boas_vindas","agent_router","oferta","negociacao","assinatura","pos_venda","liberacao","escalacao_humana","off_topic"],
+        proof:["<code>localTopics</code> do bundle <code>Consignado_Agent_v2.genAiPlannerBundle</code> (9 tópicos)"] },
+      { ic:"⚡", name:"Ações · Apex invocável", small:"@InvocableMethod · invocationTargetType=apex",
+        what:"Cada tópico chama uma <b>Ação Apex invocável</b> (não é mock, não é fluxo de UI) que grava de verdade. Os nomes de função no planner apontam para classes Apex reais.",
+        chips:["registrar_proposta → <code>RegistrarProposta</code>","negociar_parcelas → <code>NegociarParcelas</code>","assinar_contrato → <code>AssinarContrato</code>","liberar_credito → <code>LiberarCredito</code>","consultar_proposta → <code>ConsultarProposta</code>","conferir_parcelas → <code>ConferirParcelas</code>"],
+        act:true,
+        proof:["<code>classes/*.cls</code> anotadas <code>@InvocableMethod</code> · <code>invocationTarget</code> no planner bundle"] },
+      { ic:"🗂️", name:"Estado · CRM", small:"objetos-padrão, escrita real",
+        what:"A proposta é persistida numa <b>Opportunity</b> (variante objetos-padrão): <code>PROP-&lt;cpf&gt;</code>, valor em Amount, JSON de estado em Description, e o <b>StageName</b> avança Prospecting → Proposal/Quote → Negotiation/Review → <b>Closed Won</b>. A escrita é <code>insert/update as user</code> — CRUD, FLS e sharing são obrigados.",
+        chips:["Opportunity","StageName (funil)","insert/update as user"],
+        proof:["<code>ConsignadoService.cls</code> — <code>update as user o;</code> (linha ~167) · estágio lógico → StageName nativo"] },
+    ]
+  },
+
+  atendimento: {
+    title:"Atendimento Agêntico (Orquestrador Multi-Agentes)",
+    icon:"🛡️",
+    sub:"Cliente fala pelo chat do app ou registra na porta do Bacen (RDR); a triagem classifica pela norma, deriva ao especialista certo e resolve no Slack com narração, fechando com Case + comentário reais. Abaixo, o stack real por trás.",
+    org:[["Service Console", ORG+"/lightning/app/SDO_Service_Console"],["Lista de Casos", ORG+"/lightning/o/Case/list"]],
+    live:[
+      { ic:"📱", name:"Camada de Canal", small:"MIAW + Site do Bacen",
+        what:"Duas portas de entrada: <b>chat do app via MIAW</b> (ponte headless) e a <b>Landing do Bacen</b> — um Salesforce <b>Site</b> público que registra a reclamação (RDR) autenticando por token na URL.",
+        chips:["MIAW (SOMA_App_Banco_API)","Salesforce Site (guest)","token ?k= na URL"],
+        proof:["Deployment MIAW <code>SOMA_App_Banco_API</code> (ponte porta 8791) · classe <code>AbrirCasoBacen</code> no Site"] },
+      { ic:"🎯", name:"Orquestração · Triagem", small:"classifica pela norma Bacen",
+        what:"A triagem lê o texto e <b>classifica contra as regras do Banco Central</b> por contagem de palavras-chave, definindo nível (N1/N2/N3), SLA e KB — de uma <b>única fonte de verdade</b>.",
+        chips:["AtendimentoOrquestrador.triar","ClassificarChamado","SLA_Bacen__mdt","Funil_Evento__e (Platform Event)"],
+        proof:["<code>classes/AtendimentoOrquestrador.cls</code> · <code>ClassificarChamado.cls</code> · Custom Metadata <code>SLA_Bacen__mdt</code>"] },
+      { ic:"🧩", name:"Especialistas", small:"agentes N2 / retaguarda N3",
+        what:"A triagem <b>deriva para o especialista</b> da categoria. Dois deles são agentes Agentforce dedicados (planner <b>ReAct</b>); os demais são tratados por ações Apex especialistas.",
+        chips:["Especialista_PIX_MED_N2 (EinsteinServiceAgent · AiCopilot__ReAct)","HelpDeskTI_N3 (AiCopilot__ReAct)","Fraude · Crédito · Cartão/Conta (Apex)"],
+        proof:["<code>bots/Especialista_PIX_MED_N2</code>, <code>bots/HelpDeskTI_N3</code> · classes <code>EspecialistaN2</code> / <code>RetaguardaN3</code>"] },
+      { ic:"⚡", name:"Ações · Apex invocável", small:"@InvocableMethod",
+        what:"As ações abrem o caso da categoria, criam o canal de colaboração e publicam conhecimento — tudo gravando de verdade.",
+        chips:["<code>AbrirCasoAtendimento</code>","<code>AbrirCasoFraude</code>","<code>AbrirContestacaoPix</code>","<code>AbrirChamadoTI</code>","<code>AbrirCasoEscalacao</code>","<code>CriarCanalSlack</code>","<code>PublicarKnowledge</code>"],
+        act:true,
+        proof:["<code>classes/*.cls</code> anotadas <code>@InvocableMethod</code>"] },
+      { ic:"🗂️", name:"Estado · CRM + Slack", small:"Case, comentário e colaboração reais",
+        what:"O estado vive no <b>Case</b> (nível, estágio, SLA); a fala do especialista é um <b>CaseComment</b> real; a colaboração acontece num canal <b>Slack</b> por chamado; o fechamento publica <b>KB + Canvas</b>.",
+        chips:["Case","CaseComment","Canal Slack por caso","Knowledge + Canvas"],
+        proof:["Casos reais na org (ex.: 00001385–00001390) · <code>CaseComment</code> gravado por ação"] },
+    ]
+  },
+
+  funil: {
+    title:"Funil Comercial PME Agêntico",
+    icon:"🏢",
+    sub:"Officer e Gestor operam o funil por telas SLDS2; cada botão publica um evento de plataforma e o orquestrador avança o estágio, chamando o subagente de cada etapa até gerar Oportunidade. Abaixo, o stack real.",
+    org:[["Tela do Officer", ORG+"/lightning/n/Officer_Funil_PME"],["Carteira do Gestor", ORG+"/lightning/n/Gestor_Funil_PME"]],
+    live:[
+      { ic:"🖥️", name:"Camada de Canal", small:"telas SLDS2 (não é chat)",
+        what:"Diferente das outras jornadas, o canal aqui é a <b>tela do banco</b> (LWC/SLDS2) do Officer e do Gestor. O botão real <b>publica um Platform Event</b> — não chama o agente direto pela UI.",
+        chips:["LWC Officer_Funil_PME","LWC Gestor_Funil_PME","Funil_Evento__e (Platform Event)"],
+        proof:["Tabs <code>Officer_Funil_PME</code> / <code>Gestor_Funil_PME</code> · <code>FunilAcoesController</code> publica <code>Funil_Evento__e</code>"] },
+      { ic:"🎯", name:"Orquestração · Planner", small:"Agentforce · Atlas",
+        what:"O <b>SOMA_Orchestrator</b> (tipo <b>AgentforceEmployeeAgent</b>) planeja no <b>Atlas</b> multi-agente concorrente: identifica em que etapa do funil está e roteia ao subagente certo.",
+        chips:["SOMA_Orchestrator","AgentforceEmployeeAgent","Atlas__ConcurrentMultiAgentOrchestration"],
+        proof:["<code>bots/SOMA_Orchestrator</code> · planner <code>genAiPlannerBundles/SOMA_Orchestrator_v3</code>"] },
+      { ic:"🧩", name:"Subagentes por etapa", small:"um agente por fase do funil",
+        what:"Cada fase do funil é um <b>subagente</b> dedicado — o orquestrador deriva na sequência Captação → Nutrição → Qualificação → Conversão → Onboarding → Ativação → Oportunidade.",
+        chips:["Captacao_Enriquecimento","Nutricao_Score","Qualificacao","Conversao_Lead","Onboarding_Agent","Ativacao_NBA","Oportunidades_Agent","Forecast_Operacao"],
+        proof:["<code>bots/*</code> (todos <code>AgentforceEmployeeAgent</code>) · <code>localTopics</code> em <code>SOMA_Orchestrator_v3</code>"] },
+      { ic:"⚡", name:"Ações · Apex invocável", small:"@InvocableMethod",
+        what:"Cada avanço chama uma Ação Apex que lê ou grava de verdade no funil.",
+        chips:["<code>BuscarLeadsRecentes</code>","<code>CalcularScoreLead</code>","<code>QualificarLead</code>","<code>ValidarConversaoLead</code>","<code>ConverterLead</code>","<code>ConsultarOnboarding</code>","<code>ExecutarNBA</code>","<code>GerarOportunidade</code>"],
+        act:true,
+        proof:["<code>classes/*.cls</code> anotadas <code>@InvocableMethod</code> · <code>invocationTarget</code> no bundle"] },
+      { ic:"🗂️", name:"Estado · CRM", small:"Lead → Opportunity, escrita real",
+        what:"O funil grava em objetos-padrão: o <b>Lead</b> avança de estágio a cada gate (que só passa com ação real do cliente) e a conversão <b>gera uma Opportunity</b> de verdade — comprovado no teste E2E.",
+        chips:["Lead (estágios do funil)","Opportunity (conversão)","gates por ação real"],
+        proof:["<code>ConverterLead</code> / <code>GerarOportunidade</code> — Oportunidade criada no E2E"] },
+    ]
+  },
+};
+
+// ---- render ---------------------------------------------------------------
+const byId = id=>document.getElementById(id);
+const KEYS = Object.keys(JOURNEYS);
+function currentKey(){
+  const q = new URLSearchParams(location.search).get('j');
+  return JOURNEYS[q] ? q : 'consignado';
+}
+
+function chipHtml(c, act){
+  return `<span class="chip${act?' act':''}">${c}</span>`;
+}
+function layerHtml(l, i, total){
+  const badge = l.plat
+    ? '<span class="badge plat">▲ PLATAFORMA</span>'
+    : '<span class="badge live">● AO VIVO</span>';
+  const chips = (l.chips&&l.chips.length) ? `<div class="chips">${l.chips.map(c=>chipHtml(c,l.act)).join('')}</div>` : '';
+  const proof = l.proof ? `<div class="lyr-proof"><span class="k">prova ✓</span><span>${l.proof.join('<br>')}</span></div>` : '';
+  const conn = i<total-1 ? '<div class="conn"></div>' : '';
+  return `<div class="lyr${l.plat?' plat':''}">
+      <div class="lyr-head">
+        <div class="lyr-ic">${l.ic}</div>
+        <div class="lyr-name">${l.name}<small>${l.small||''}</small></div>
+        <div class="lyr-badge-wrap">${badge}</div>
+      </div>
+      <div class="lyr-what">${l.what}</div>
+      ${chips}${proof}
+    </div>${conn}`;
+}
+
+function render(key){
+  const j = JOURNEYS[key];
+  document.title = `Detalhe Técnico · ${j.title}`;
+  byId('j-title').textContent = j.title;
+  byId('j-sub').innerHTML = j.sub;
+
+  // trilha = camadas live + camada de modelo (plataforma) ao final
+  const layers = j.live.concat([MODELO]);
+  byId('track').innerHTML = layers.map((l,i)=>layerHtml(l,i,layers.length)).join('');
+
+  // referência (compartilhada)
+  byId('ref-grid').innerHTML = REF_CARDS.map(r=>`
+    <div class="ref-card">
+      <div class="rt">${r.rt}</div>
+      <div class="rd">${r.rd}</div>
+      <div class="rmap">${r.rmap}</div>
+    </div>`).join('');
+
+  // orgbar
+  const ob = byId('orgbar');
+  ob.innerHTML = '<span class="lbl">🔗 Abrir na org:</span>' +
+    j.org.map(([t,u])=>`<a href="${u}" target="_blank" rel="noopener">${t}</a>`).join('');
+
+  // nav
+  byId('jnav').innerHTML = KEYS.map(k=>{
+    const jj=JOURNEYS[k];
+    return `<a class="jbtn${k===key?' active':''}" href="?j=${k}"><span class="ic">${jj.icon}</span>${jj.title.split(' (')[0]}</a>`;
+  }).join('');
+
+  // foot
+  byId('foot').innerHTML =
+    `Tudo marcado <b style="color:var(--live)">● AO VIVO</b> tem lastro no metadata da org (<code>force-app/main/default/…</code>): nomes de agente, <code>plannerType</code>, ações <code>@InvocableMethod</code> e objeto de estado são os reais. As camadas <b style="color:var(--ref)">○ de referência</b> (MCP Servers, Super Agent/Control Plane, A2A, Data Cloud/RAG) são a arquitetura-alvo do mapa da aba 2 — <b>ainda não acionadas nesta jornada</b>. A <b>Camada de Modelo</b> é real (o Atlas raciocina sobre um LLM), mas o provedor <b>não está fixado no metadata</b> — por isso não afirmamos um model ID. Identidade visual: Brand Central 2026 · org <code>somaOrg</code>.`;
+}
+
+render(currentKey());
+</script>
+</body>
+</html>

@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Abra sua conta PJ · Banco Digital · Landing Page</title>
+<!--
+  LANDING PAGE DO BANCO DIGITAL — porta de captacao de Leads PME (jornada do Funil).
+  Cria Leads REAIS na org via o endpoint guest publico CriarLeadSite
+  (/consumer/services/apexrest/banco/lead) — same-origin quando servida pelo Site,
+  sem CORS e SEM SEGREDO (criar Lead de formulario publico nao e operacao secreta,
+  mesma postura do `oid` publico do Web-to-Lead padrao).
+
+  Ao criar o Lead com Estagio_Funil__c vazio, o LeadFunilTrigger dispara o
+  Funil_Evento__e (Nutricao) e o lead atravessa o funil agentico sozinho — evento
+  REAL comprovado E2E (lead anonimo avancou ate Qualificado/Convertido).
+
+  Dois modos, um mesmo endpoint:
+   1) Formulario  -> 1 Lead
+   2) Upload CSV  -> ate 3 Leads (colunas: razaoSocial,cnpj,nomeSocio,email,telefone)
+-->
+<style>
+:root{
+  --cloud95:#EAF5FE; --cloud80:#90D0FE; --cloud68:#00B3FF;
+  --eb50:#066AFE; --eb30:#022AC0; --eb15:#001E5B;
+  --teal80:#04E1CB; --yellow80:#FCC003; --pink60:#FF538A;
+  --ink:#001E5B; --ink-muted:#5b7bb5;
+  --card:#fff; --card-border:rgba(2,42,192,.14);
+  --ok:#067a6e; --ok-bg:rgba(4,225,203,.14); --err:#c0392b; --err-bg:#fdecea;
+  --shadow:0 10px 30px rgba(1,20,60,.10); --shadow-lg:0 20px 52px rgba(1,20,60,.20);
+  --display:"AvantGarde SF","Trebuchet MS",Avenir,"Segoe UI",sans-serif;
+  --body:"Salesforce Sans",-apple-system,system-ui,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--body);color:var(--ink);
+  background:radial-gradient(120% 80% at 82% -10%,rgba(0,179,255,.10) 0,transparent 55%),
+    linear-gradient(180deg,#F4FAFF 0,#EAF5FE 100%);min-height:100vh}
+
+/* HERO */
+.hero{position:relative;overflow:hidden;color:#fff;padding:22px clamp(16px,5vw,56px) 24px;
+  background:radial-gradient(120% 120% at 84% 6%,#066AFE 0,transparent 52%),
+    linear-gradient(150deg,#001E5B 0,#022AC0 52%,#066AFE 100%)}
+.hero::after{content:"";position:absolute;right:-120px;top:-120px;width:380px;height:380px;
+  background:radial-gradient(circle,rgba(0,179,255,.45),transparent 62%);filter:blur(6px);pointer-events:none}
+.top{display:flex;align-items:center;gap:12px;position:relative;z-index:2;flex-wrap:wrap}
+.badge-sf{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:12px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--cloud80)}
+.badge-sf .sf-logo{height:24px;width:auto;flex:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.25))}
+.back{margin-left:auto;color:var(--cloud95);text-decoration:none;font-weight:700;font-size:13px;
+  border:1px solid rgba(255,255,255,.28);border-radius:20px;padding:7px 14px;transition:.15s}
+.back:hover{background:rgba(255,255,255,.14)}
+.hero h1{font-family:var(--display);font-weight:600;letter-spacing:-.02em;line-height:1.05;
+  font-size:clamp(24px,3.6vw,40px);margin:14px 0 0;position:relative;z-index:2}
+.hero h1 .hl{color:var(--cloud68)}
+.hero p.sub{font-weight:300;font-size:clamp(14px,1.6vw,18px);line-height:1.45;color:var(--cloud95);
+  margin-top:10px;max-width:74ch;position:relative;z-index:2;opacity:.95}
+.live{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:#eafff9;
+  background:rgba(4,225,203,.2);border:1px solid rgba(4,225,203,.4);border-radius:20px;padding:5px 12px;
+  margin-top:14px;position:relative;z-index:2}
+.live .dot{width:8px;height:8px;border-radius:50%;background:var(--teal80);animation:pulse 1.8s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(4,225,203,.55)}70%{box-shadow:0 0 0 9px rgba(4,225,203,0)}100%{box-shadow:0 0 0 0 rgba(4,225,203,0)}}
+
+/* LAYOUT */
+.wrap{max-width:1080px;margin:0 auto;padding:24px clamp(16px,5vw,56px) 60px;
+  display:grid;grid-template-columns:1.15fr .85fr;gap:22px;align-items:start}
+@media(max-width:860px){.wrap{grid-template-columns:1fr}}
+
+.panel{background:var(--card);border:1.5px solid var(--card-border);border-radius:18px;padding:22px;box-shadow:var(--shadow)}
+.panel h2{font-family:var(--display);font-size:20px;font-weight:600;color:var(--eb15);letter-spacing:-.01em;margin-bottom:4px}
+.panel .lead{font-size:14px;color:var(--ink-muted);line-height:1.55;margin-bottom:16px}
+
+/* TABS modo */
+.tabs{display:flex;gap:8px;margin-bottom:18px;background:var(--cloud95);padding:5px;border-radius:12px}
+.tab{flex:1;border:none;background:transparent;font-family:var(--body);font-weight:700;font-size:13.5px;
+  color:var(--ink-muted);padding:10px 12px;border-radius:9px;cursor:pointer;transition:.15s}
+.tab.active{background:#fff;color:var(--eb30);box-shadow:0 2px 8px rgba(1,20,60,.10)}
+
+/* FORM */
+.field{margin-bottom:14px}
+.field.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:520px){.field.row2{grid-template-columns:1fr}}
+label{display:block;font-size:12.5px;font-weight:700;color:#33475b;margin-bottom:6px}
+label .req{color:var(--pink60)}
+input,textarea{width:100%;font-family:inherit;font-size:14.5px;color:var(--ink);
+  padding:11px 13px;border:1px solid #cdd7e1;border-radius:10px;background:#fbfcfe;outline:none;
+  transition:border-color .15s,box-shadow .15s}
+input:focus,textarea:focus{border-color:var(--eb50);box-shadow:0 0 0 3px rgba(6,106,254,.16)}
+.hint{font-size:11.5px;color:var(--ink-muted);margin-top:5px}
+/* honeypot — escondido de humanos, isca p/ bots */
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+
+.actions{display:flex;align-items:center;gap:14px;margin-top:18px;flex-wrap:wrap}
+.btn{border:none;cursor:pointer;font-family:var(--body);font-weight:800;font-size:15px;color:#fff;
+  background:linear-gradient(135deg,var(--eb50),var(--cloud68));border-radius:12px;padding:14px 24px;
+  display:inline-flex;align-items:center;gap:9px;box-shadow:0 10px 26px rgba(6,106,254,.36);transition:.16s}
+.btn:hover{transform:translateY(-2px)}
+.btn:disabled{opacity:.55;cursor:default;transform:none}
+.btn-sec{background:none;color:var(--eb50);box-shadow:none;border:1.5px solid var(--card-border);padding:12px 18px}
+.btn-sec:hover{transform:none;background:var(--cloud95)}
+
+/* CSV drop */
+.drop{border:2px dashed #b9cdec;border-radius:14px;background:#fbfcfe;padding:26px 20px;text-align:center;
+  cursor:pointer;transition:.15s}
+.drop:hover,.drop.over{border-color:var(--eb50);background:var(--cloud95)}
+.drop .big{font-size:15px;font-weight:700;color:var(--eb30);margin-bottom:4px}
+.drop .small{font-size:12.5px;color:var(--ink-muted)}
+.drop .ic{font-size:30px;display:block;margin-bottom:8px}
+.csvtable{width:100%;border-collapse:collapse;margin-top:14px;font-size:12.5px}
+.csvtable th,.csvtable td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--card-border)}
+.csvtable th{color:var(--ink-muted);font-weight:700;text-transform:uppercase;font-size:10.5px;letter-spacing:.04em}
+.csvtable td{color:var(--eb15)}
+.tmpl{font-size:12px;margin-top:12px}
+.tmpl a{color:var(--eb50);font-weight:700;text-decoration:none;cursor:pointer}
+.tmpl a:hover{text-decoration:underline}
+
+/* RESULTADO */
+.result{display:none;margin-top:18px;border-radius:14px;padding:18px 20px}
+.result.show{display:block}
+.result.ok{background:var(--ok-bg);border:1px solid rgba(4,225,203,.4)}
+.result.err{background:var(--err-bg);border:1px solid #f5c6c0}
+.result .rt{display:flex;align-items:center;gap:10px;font-weight:800;font-size:16px;margin-bottom:8px}
+.result.ok .rt{color:var(--ok)} .result.err .rt{color:var(--err)}
+.result .check{width:26px;height:26px;border-radius:50%;background:var(--ok);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:15px;flex:none}
+.result.err .check{background:var(--err)}
+.result ul{list-style:none;margin:8px 0 0;font-size:13.5px}
+.result li{padding:6px 0;border-top:1px solid rgba(1,20,60,.08);display:flex;gap:9px;align-items:baseline}
+.result li:first-child{border-top:none}
+.result li .st{font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;flex:none}
+.result li .st.criado{background:var(--ok);color:#fff}
+.result li .st.reaproveitado{background:var(--yellow80);color:#3a2e00}
+.result li .st.erro{background:var(--err);color:#fff}
+.result li code{background:#fff;border:1px solid var(--card-border);border-radius:6px;padding:1px 6px;font-size:12px}
+.result .next{margin-top:14px;font-size:13.5px}
+.result .next a{color:var(--eb50);font-weight:700;text-decoration:none}
+.result .next a:hover{text-decoration:underline}
+
+/* aside */
+aside .panel{margin-bottom:16px}
+aside h3{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--eb50);margin-bottom:12px}
+.steps{list-style:none;display:flex;flex-direction:column;gap:11px}
+.steps li{display:flex;gap:11px;align-items:flex-start}
+.steps li .n{width:25px;height:25px;flex:none;border-radius:50%;background:var(--cloud95);color:var(--eb50);
+  font-weight:800;font-size:12.5px;display:grid;place-items:center}
+.steps li .tx{font-size:13.5px;line-height:1.5;color:var(--eb15)}
+.steps li .tx b{color:var(--eb30)}
+
+/* FLUXO DO FUNIL (7 etapas) — acende conforme a org avanca de verdade */
+.flow-sub{font-size:12.5px;color:var(--ink-muted);line-height:1.5;margin:-2px 0 14px}
+.flow-sub b{color:var(--eb30)}
+.flow{list-style:none;display:flex;flex-direction:column;gap:0;position:relative}
+.fstep{display:flex;gap:12px;align-items:flex-start;padding:9px 0;position:relative;transition:opacity .3s}
+/* conector vertical entre as bolinhas */
+.fstep::before{content:"";position:absolute;left:12.5px;top:29px;bottom:-9px;width:2px;
+  background:var(--card-border);transition:background .4s}
+.fstep:last-child::before{display:none}
+.fstep .n{width:26px;height:26px;flex:none;border-radius:50%;background:#fff;color:var(--ink-muted);
+  border:2px solid var(--card-border);font-weight:800;font-size:12.5px;display:grid;place-items:center;
+  position:relative;z-index:1;transition:.35s}
+.fstep .tx{font-size:13.5px;line-height:1.35;color:var(--ink-muted);transition:color .3s;padding-top:1px}
+.fstep .tx b{color:var(--eb15);display:block;font-size:13.5px;transition:color .3s}
+.fstep .tx small{display:block;font-size:11.5px;color:var(--ink-muted);line-height:1.45;margin-top:2px;font-weight:400}
+.fstep .gate{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.02em;color:var(--eb50);
+  background:var(--cloud95);border:1px solid var(--card-border);border-radius:20px;padding:1px 8px;
+  vertical-align:1px;margin-left:4px}
+/* estado CONCLUIDO (a org ja passou desta etapa) */
+.fstep.done .n{background:var(--ok);border-color:var(--ok);color:#fff}
+.fstep.done .tx b{color:var(--eb15)}
+.fstep.done::before{background:var(--ok)}
+/* estado ATIVO (etapa que a org esta executando agora) */
+.fstep.active .n{background:var(--eb50);border-color:var(--eb50);color:#fff;
+  box-shadow:0 0 0 5px rgba(6,106,254,.16);animation:fpulse 1.6s infinite}
+.fstep.active .tx b{color:var(--eb30)}
+.fstep.active .tx{color:var(--eb15)}
+@keyframes fpulse{0%{box-shadow:0 0 0 0 rgba(6,106,254,.32)}70%{box-shadow:0 0 0 9px rgba(6,106,254,0)}100%{box-shadow:0 0 0 0 rgba(6,106,254,0)}}
+/* estado GATE ATINGIDO (parou aqui, aguardando o cliente) */
+.fstep.gate-hit .n{background:var(--yellow80);border-color:var(--yellow80);color:#3a2e00;
+  box-shadow:0 0 0 5px rgba(252,192,3,.2);animation:fpulse-g 1.8s infinite}
+.fstep.gate-hit .tx b{color:var(--eb15)}
+.fstep.gate-hit .gate{background:var(--yellow80);color:#3a2e00;border-color:transparent}
+@keyframes fpulse-g{0%{box-shadow:0 0 0 0 rgba(252,192,3,.4)}70%{box-shadow:0 0 0 9px rgba(252,192,3,0)}100%{box-shadow:0 0 0 0 rgba(252,192,3,0)}}
+/* estado LOCKED (etapas alem do gate: so andam com acao real do cliente) */
+.fstep.locked{opacity:.5}
+.flow-status{display:flex;align-items:center;gap:9px;margin-top:14px;font-size:12.5px;font-weight:700;
+  color:var(--eb30);background:var(--cloud95);border:1px solid var(--card-border);border-radius:11px;padding:9px 12px}
+.flow-status .fdot{width:9px;height:9px;border-radius:50%;background:var(--eb50);flex:none;animation:pulse 1.6s infinite}
+.flow-status.gate .fdot{background:var(--yellow80)}
+.flow-status.gate{color:#7a5c00}
+.watch{font-size:13px;line-height:1.6}
+.watch a{color:var(--eb50);font-weight:700;text-decoration:none}
+.watch a:hover{text-decoration:underline}
+.note{font-size:11.5px;color:var(--ink-muted);margin-top:12px;line-height:1.5}
+footer{max-width:1080px;margin:0 auto;padding:0 clamp(16px,5vw,56px) 40px;color:var(--ink-muted);font-size:11.5px}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="top">
+    <span class="badge-sf"><img class="sf-logo" src="../assets/salesforce-logo.png" alt="Salesforce"> Banco Digital · Abertura de conta PJ</span>
+    <a class="back" href="../index.html?aba=3">← Voltar ao Hub</a>
+  </div>
+  <h1>Sua empresa merece um <span class="hl">banco que age por você</span></h1>
+  <p class="sub">Deixe seus dados e um assistente do banco assume a partir daqui: qualifica, nutre e
+    conduz a abertura da conta PJ — tudo automaticamente. É o funil agêntico rodando de verdade.</p>
+  <span class="live"><span class="dot"></span> Cria um Lead REAL na org e dispara o funil</span>
+</header>
+
+<div class="wrap">
+  <!-- COLUNA PRINCIPAL: FORM / CSV -->
+  <section class="panel">
+    <div class="tabs">
+      <button class="tab active" id="tabForm" onclick="setMode('form')">📝 Um cadastro</button>
+      <button class="tab" id="tabCsv" onclick="setMode('csv')">📄 Enviar 3 (CSV)</button>
+    </div>
+
+    <!-- MODO FORMULÁRIO -->
+    <div id="modeForm">
+      <h2>Comece a abertura da conta</h2>
+      <p class="lead">Preenchimento rápido. Ao enviar, criamos o Lead e o funil agêntico já assume a jornada.</p>
+      <form id="form" onsubmit="return false" autocomplete="off">
+        <div class="field">
+          <label for="razaoSocial">Razão social / nome da empresa <span class="req">*</span></label>
+          <input id="razaoSocial" placeholder="Ex.: Prado Distribuidora LTDA">
+        </div>
+        <div class="field row2">
+          <div>
+            <label for="cnpj">CNPJ</label>
+            <input id="cnpj" placeholder="12.345.678/0001-90" maxlength="20">
+            <div class="hint">CNPJ ou e-mail — informe ao menos um.</div>
+          </div>
+          <div>
+            <label for="nomeSocio">Nome do sócio / responsável</label>
+            <input id="nomeSocio" placeholder="Ex.: Helena Prado">
+          </div>
+        </div>
+        <div class="field row2">
+          <div>
+            <label for="email">E-mail de contato</label>
+            <input id="email" type="email" placeholder="voce@empresa.com.br">
+          </div>
+          <div>
+            <label for="telefone">Telefone / WhatsApp</label>
+            <input id="telefone" placeholder="(11) 90000-0000">
+          </div>
+        </div>
+        <!-- honeypot anti-bot -->
+        <div class="hp" aria-hidden="true"><label>Não preencha<input id="website_confirm" tabindex="-1" autocomplete="off"></label></div>
+        <div class="actions">
+          <button class="btn" id="btnForm" onclick="enviarForm()">🚀 Abrir minha conta PJ</button>
+          <span class="hint">Cria um Lead real e aciona o funil de nutrição.</span>
+        </div>
+      </form>
+    </div>
+
+    <!-- MODO CSV -->
+    <div id="modeCsv" style="display:none">
+      <h2>Envie uma carteira de leads</h2>
+      <p class="lead">Suba um arquivo CSV com até <b>3 empresas</b>. Cada linha vira um Lead real que entra no funil.</p>
+      <div class="drop" id="drop">
+        <input type="file" id="file" accept=".csv,text/csv" style="display:none">
+        <span class="ic">📄</span>
+        <div class="big">Arraste o CSV aqui ou clique para escolher</div>
+        <div class="small">Colunas: <code>razaoSocial, cnpj, nomeSocio, email, telefone</code> · máx. 3 linhas</div>
+      </div>
+      <div class="tmpl">💡 <a onclick="baixarModelo()">Baixar CSV de exemplo (3 leads)</a></div>
+      <div id="csvPreview"></div>
+      <div class="actions" id="csvActions" style="display:none">
+        <button class="btn" id="btnCsv" onclick="enviarCsv()">🚀 Enviar leads e acionar o funil</button>
+        <button class="btn btn-sec" onclick="limparCsv()">Limpar</button>
+      </div>
+    </div>
+
+    <!-- RESULTADO (comum aos dois modos) -->
+    <div class="result" id="result"></div>
+  </section>
+
+  <!-- ASIDE -->
+  <aside>
+    <div class="panel">
+      <h3>O que acontece ao enviar</h3>
+      <p class="flow-sub">O <b>Funil Comercial PME Agêntico</b> — cada etapa acende quando a org
+        <b>realmente</b> avança. Sem roteiro: é o estado ao vivo do seu lead.</p>
+      <ol class="flow" id="flow">
+        <li class="fstep" data-step="1"><span class="n">1</span>
+          <span class="tx"><b>Captação de Leads</b><small>Lead real criado na org (canal Landing Page).</small></span></li>
+        <li class="fstep" data-step="2"><span class="n">2</span>
+          <span class="tx"><b>Cadastro e Nutrição</b><small>LeadFunilTrigger dispara a Nutrição; enriquece e pontua.</small></span></li>
+        <li class="fstep" data-step="3"><span class="n">3</span>
+          <span class="tx"><b>Qualificação / Score</b><small>O orquestrador qualifica e converte o lead sozinho.</small></span></li>
+        <li class="fstep fgate" data-step="4"><span class="n">4</span>
+          <span class="tx"><b>Onboarding</b> <span class="gate">🚪 gate do cliente</span>
+            <small>Para aqui: aguarda você enviar os documentos pelo Chat do App.</small></span></li>
+        <li class="fstep fgate" data-step="5"><span class="n">5</span>
+          <span class="tx"><b>Ativação da Conta</b> <span class="gate">🚪 gate do cliente</span>
+            <small>Ativa a conta e entrega a NBA; aguarda sua decisão (aceitar/recusar).</small></span></li>
+        <li class="fstep" data-step="6"><span class="n">6</span>
+          <span class="tx"><b>Oportunidades</b><small>Gera a Oportunidade com produto sugerido e propensão.</small></span></li>
+        <li class="fstep" data-step="7"><span class="n">7</span>
+          <span class="tx"><b>Resultado · Forecast</b><small>Visibilidade fim-a-fim: do lead à operação, no Salesforce.</small></span></li>
+      </ol>
+      <div class="flow-status" id="flowStatus" style="display:none">
+        <span class="fdot"></span><span id="flowStatusTx">Aguardando o envio…</span>
+      </div>
+    </div>
+    <div class="panel watch">
+      <h3>Veja o funil rodando</h3>
+      🔗 Na org:<br>
+      <a href="https://trailsignup-2979e1c6606a3b.lightning.force.com/lightning/n/Officer_Funil_PME" target="_blank" rel="noopener">Tela do Officer →</a><br>
+      <a href="https://trailsignup-2979e1c6606a3b.lightning.force.com/lightning/n/Gestor_Funil_PME" target="_blank" rel="noopener">Carteira do Gestor →</a><br>
+      <a href="https://trailsignup-2979e1c6606a3b.lightning.force.com/lightning/o/Lead/list" target="_blank" rel="noopener">Lista de Leads →</a>
+      <div style="margin-top:12px">🎬 <a href="funil-comercial.html" target="_blank" rel="noopener">Ver a animação do funil comercial →</a></div>
+      <p class="note">Ambiente de demonstração. Os dados que você enviar criam registros reais na org de demo —
+        use dados fictícios. Nada é cobrado e nenhuma conta bancária é realmente aberta.</p>
+    </div>
+  </aside>
+</div>
+
+<footer>Banco Digital · Landing Page de captação — jornada do Funil PME · Instituições Financeiras Agênticas no Brasil</footer>
+
+<script>
+// Endpoint guest real. Same-origin quando servido pelo Site (/consumer); caminho absoluto
+// como fallback para abrir o arquivo localmente durante o desenvolvimento.
+const ENDPOINT = (location.hostname.endsWith('.my.site.com'))
+  ? '/consumer/services/apexrest/banco/lead'
+  : 'https://trailsignup-2979e1c6606a3b.my.site.com/consumer/services/apexrest/banco/lead';
+// Mesmo endpoint, via GET ?id= — devolve o estagio REAL do funil p/ animar o card.
+const ESTAGIO_URL = id => ENDPOINT + '?id=' + encodeURIComponent(id);
+
+const $ = id => document.getElementById(id);
+const result = $('result');
+let csvLeads = [];
+
+function setMode(m){
+  const isForm = m === 'form';
+  $('modeForm').style.display = isForm ? '' : 'none';
+  $('modeCsv').style.display  = isForm ? 'none' : '';
+  $('tabForm').classList.toggle('active', isForm);
+  $('tabCsv').classList.toggle('active', !isForm);
+  result.className = 'result';
+}
+
+function esc(t){ return (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function mostrarResultado(data, ok){
+  const itens = (data && data.itens) || [];
+  let li = itens.map(it => {
+    const id = it.leadId ? `<code>${esc(it.leadId)}</code>` : '';
+    return `<li><span class="st ${it.status||'erro'}">${it.status||'erro'}</span>
+      <span><b>${esc(it.empresa||'—')}</b> — ${esc(it.mensagem||'')} ${id}</span></li>`;
+  }).join('');
+  const criados = (data && data.criados) || 0;
+  const next = (ok && criados>0)
+    ? `<div class="next">🎬 Acompanhe o funil no card ao lado — e veja na org:
+        <a href="https://trailsignup-2979e1c6606a3b.lightning.force.com/lightning/n/Officer_Funil_PME" target="_blank" rel="noopener">abrir a Tela do Officer →</a></div>`
+    : '';
+  result.className = 'result show ' + (ok ? 'ok' : 'err');
+  result.innerHTML =
+    `<div class="rt"><span class="check">${ok?'✓':'!'}</span> ${esc((data&&data.mensagem)||(ok?'Enviado.':'Não foi possível enviar.'))}</div>`
+    + (li ? `<ul>${li}</ul>` : '') + next;
+  result.scrollIntoView({behavior:'smooth', block:'nearest'});
+
+  // Anima o card do funil com o PRIMEIRO lead criado/reaproveitado (estado real).
+  const primeiro = (itens.find(it => it.leadId) || {}).leadId;
+  if (ok && primeiro) acompanharFunil(primeiro);
+}
+
+// ---- ANIMAÇÃO DO FUNIL (espelha o estado REAL do lead, sem timer) ----
+// Etapas 1-3 avançam sozinhas na org; o lead da landing PARA no gate de Onboarding
+// (passo 4) — as etapas 5-7 só andam com ação real do cliente no Chat do App.
+let funilTimer = null;
+function pintarFunil(passo, emGate){
+  document.querySelectorAll('.fstep').forEach(li=>{
+    const s = +li.dataset.step;
+    li.classList.remove('done','active','gate-hit','locked');
+    if (emGate){
+      if (s < passo) li.classList.add('done');
+      else if (s === passo) li.classList.add('gate-hit');   // parou no gate
+      else li.classList.add('locked');                       // aguarda o cliente
+    } else {
+      if (s < passo) li.classList.add('done');
+      else if (s === passo) li.classList.add('active');
+    }
+  });
+}
+function statusFunil(txt, gate){
+  const box = $('flowStatus');
+  box.style.display = 'flex';
+  box.className = 'flow-status' + (gate ? ' gate' : '');
+  $('flowStatusTx').textContent = txt;
+}
+async function acompanharFunil(leadId){
+  if (funilTimer) clearInterval(funilTimer);
+  pintarFunil(1, false);
+  statusFunil('Lead captado — o funil está arrancando…', false);
+  let tentativas = 0;
+  const MAX = 40;                       // ~2 min de polling (3s), suficiente p/ chegar ao gate
+  const tick = async () => {
+    tentativas++;
+    try{
+      const r = await fetch(ESTAGIO_URL(leadId), {headers:{'Accept':'application/json'}});
+      const e = await r.json();
+      const passo = e.passo || 1;
+      pintarFunil(passo, !!e.emGate);
+      statusFunil(e.mensagem || 'Processando…', !!e.emGate);
+      if (e.emGate || e.convertido){    // chegou ao gate de Onboarding: para de pollar
+        clearInterval(funilTimer); funilTimer = null;
+      }
+    }catch(_){ /* transitório: segue tentando */ }
+    if (tentativas >= MAX && funilTimer){ clearInterval(funilTimer); funilTimer = null; }
+  };
+  tick();
+  funilTimer = setInterval(tick, 3000);
+}
+
+async function postar(payload, btn){
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  try{
+    const r = await fetch(ENDPOINT, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+    });
+    let data = {};
+    try{ data = await r.json(); }catch(_){ data = {mensagem:'Resposta inesperada do servidor.'}; }
+    mostrarResultado(data, r.ok && data.sucesso);
+  }catch(e){
+    mostrarResultado({mensagem:'Falha de conexão: ' + e.message, itens:[]}, false);
+  }finally{
+    btn.disabled = false; btn.textContent = label;
+  }
+}
+
+// ---- MODO FORMULÁRIO ----
+function enviarForm(){
+  const payload = {
+    razaoSocial: $('razaoSocial').value.trim(),
+    cnpj: $('cnpj').value.trim(),
+    nomeSocio: $('nomeSocio').value.trim(),
+    email: $('email').value.trim(),
+    telefone: $('telefone').value.trim(),
+    website_confirm: $('website_confirm').value   // honeypot
+  };
+  if(!payload.razaoSocial){ mostrarResultado({mensagem:'Informe a razão social / nome da empresa.', itens:[]}, false); return; }
+  if(!payload.cnpj && !payload.email){ mostrarResultado({mensagem:'Informe CNPJ ou e-mail de contato.', itens:[]}, false); return; }
+  postar(payload, $('btnForm'));
+}
+
+// ---- MODO CSV ----
+const drop = $('drop'), fileInput = $('file');
+drop.onclick = () => fileInput.click();
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); if(e.dataTransfer.files[0]) lerCsv(e.dataTransfer.files[0]); };
+fileInput.onchange = () => { if(fileInput.files[0]) lerCsv(fileInput.files[0]); };
+
+function parseCsvLine(line){
+  // parser simples com suporte a aspas
+  const out=[]; let cur='', q=false;
+  for(let i=0;i<line.length;i++){ const ch=line[i];
+    if(ch==='"'){ if(q && line[i+1]==='"'){cur+='"';i++;} else q=!q; }
+    else if(ch===',' && !q){ out.push(cur); cur=''; }
+    else cur+=ch;
+  }
+  out.push(cur); return out.map(s=>s.trim());
+}
+
+function lerCsv(file){
+  const reader = new FileReader();
+  reader.onload = () => {
+    const linhas = reader.result.split(/\r?\n/).filter(l => l.trim().length);
+    if(!linhas.length){ mostrarResultado({mensagem:'CSV vazio.', itens:[]}, false); return; }
+    // detecta cabeçalho
+    let header = parseCsvLine(linhas[0]).map(h => h.toLowerCase());
+    const conhecidos = ['razaosocial','empresa','cnpj','documento','nomesocio','socio','nome','email','telefone','phone'];
+    const temHeader = header.some(h => conhecidos.includes(h));
+    const dados = temHeader ? linhas.slice(1) : linhas;
+    if(!temHeader) header = ['razaosocial','cnpj','nomesocio','email','telefone'];
+
+    csvLeads = dados.slice(0,3).map(l => {
+      const cols = parseCsvLine(l); const o = {};
+      header.forEach((h,i) => { o[h] = cols[i] || ''; });
+      return {
+        razaoSocial: o.razaosocial || o.empresa || '',
+        cnpj: o.cnpj || o.documento || '',
+        nomeSocio: o.nomesocio || o.socio || o.nome || '',
+        email: o.email || '',
+        telefone: o.telefone || o.phone || ''
+      };
+    });
+    renderPreview(dados.length > 3);
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function renderPreview(truncou){
+  if(!csvLeads.length){ $('csvPreview').innerHTML=''; $('csvActions').style.display='none'; return; }
+  const rows = csvLeads.map(l => `<tr>
+    <td>${esc(l.razaoSocial||'—')}</td><td>${esc(l.cnpj||'—')}</td>
+    <td>${esc(l.nomeSocio||'—')}</td><td>${esc(l.email||'—')}</td></tr>`).join('');
+  $('csvPreview').innerHTML = `<table class="csvtable">
+    <thead><tr><th>Empresa</th><th>CNPJ</th><th>Sócio</th><th>E-mail</th></tr></thead>
+    <tbody>${rows}</tbody></table>`
+    + (truncou ? `<div class="hint" style="margin-top:8px">⚠️ Só as 3 primeiras linhas serão enviadas (limite da demo).</div>` : '');
+  $('csvActions').style.display = 'flex';
+}
+
+function limparCsv(){ csvLeads=[]; fileInput.value=''; $('csvPreview').innerHTML=''; $('csvActions').style.display='none'; result.className='result'; }
+
+function enviarCsv(){
+  if(!csvLeads.length){ mostrarResultado({mensagem:'Escolha um CSV com pelo menos 1 lead.', itens:[]}, false); return; }
+  const validos = csvLeads.filter(l => l.razaoSocial && (l.cnpj || l.email));
+  if(!validos.length){ mostrarResultado({mensagem:'Nenhuma linha tem empresa + (CNPJ ou e-mail).', itens:[]}, false); return; }
+  postar({leads: validos}, $('btnCsv'));
+}
+
+function baixarModelo(){
+  const csv = 'razaoSocial,cnpj,nomeSocio,email,telefone\n'
+    + 'Prado Distribuidora LTDA,12.345.678/0001-90,Helena Prado,helena@prado.com.br,11990001111\n'
+    + 'Aurora Alimentos ME,98.765.432/0001-10,Rafael Aurora,rafael@aurora.com.br,11990002222\n'
+    + 'Nova Onda Comercio,45.678.912/0001-33,Marina Souza,marina@novaonda.com.br,11990003333\n';
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'leads-exemplo.csv'; a.click();
+  URL.revokeObjectURL(a.href);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,2 @@
+# Sem dependências externas — app.py e mcp_client.py usam só a stdlib do Python.
+# O arquivo existe para o Heroku reconhecer o app como Python (buildpack).

@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Instituições Financeiras Agênticas no Brasil</title>
+<style>
+/* ============================================================================
+   IDENTIDADE VISUAL — Salesforce Brand Central 2026 (só os tokens, sem o deck)
+   Azul oficial: Cloud Blue + Electric Blue; gradiente Evening; acento Cloud 68.
+   ============================================================================ */
+:root{
+  /* escala primária 2026 (hex oficial) */
+  --cloud95:#EAF5FE; --cloud80:#90D0FE; --cloud68:#00B3FF;
+  --eb50:#066AFE; --eb30:#022AC0; --eb15:#001E5B;
+  /* secundária (regra 80/20 — só acentos) */
+  --teal80:#04E1CB; --yellow80:#FCC003; --pink60:#FF538A; --violet65:#D17DFE;
+
+  --ink:#001E5B; --ink-soft:#022AC0; --ink-muted:#5b7bb5;
+  --accent:#066AFE; --accent-bright:#00B3FF;
+  --card:#ffffff; --card-border:rgba(2,42,192,.14);
+  --shadow:0 10px 34px rgba(1,20,60,.10);
+  --shadow-lg:0 22px 60px rgba(1,20,60,.18);
+
+  --display:"AvantGarde SF","Trebuchet MS",Avenir,"Segoe UI",sans-serif;
+  --body:"Salesforce Sans",-apple-system,system-ui,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--body);color:var(--ink);
+  background:
+    radial-gradient(120% 80% at 80% -10%, rgba(0,179,255,.10) 0%, transparent 55%),
+    linear-gradient(180deg,#F4FAFF 0%, #EAF5FE 100%);
+  min-height:100vh;
+}
+
+/* ---------------------------------------------------------------- HERO ---- */
+.hero{
+  position:relative;overflow:hidden;color:#fff;
+  background:
+    radial-gradient(120% 120% at 82% 8%, #066AFE 0%, transparent 52%),
+    linear-gradient(150deg,#001E5B 0%, #022AC0 50%, #066AFE 100%);
+  padding:38px clamp(20px,5vw,72px) 30px;
+}
+.hero::after{ /* brilho de acento no canto */
+  content:"";position:absolute;right:-120px;top:-120px;width:420px;height:420px;
+  background:radial-gradient(circle,rgba(0,179,255,.45),transparent 62%);
+  filter:blur(6px);pointer-events:none;
+}
+.hero__top{display:flex;align-items:center;gap:12px;position:relative;z-index:2}
+.badge-sf{
+  display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:13px;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--cloud80);
+}
+.badge-sf .cloud{
+  width:26px;height:18px;border-radius:9px;background:#fff;position:relative;flex:none;
+  box-shadow:0 0 0 3px rgba(255,255,255,.16);
+}
+.badge-sf .cloud::before,.badge-sf .cloud::after{
+  content:"";position:absolute;background:#fff;border-radius:50%;
+}
+.badge-sf .cloud::before{width:12px;height:12px;left:-4px;top:5px}
+.badge-sf .cloud::after{width:15px;height:15px;right:-5px;top:2px}
+.badge-sf .sf-logo{height:26px;width:auto;flex:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.25))}
+.hero h1{
+  font-family:var(--display);font-weight:600;letter-spacing:-.02em;line-height:1.02;
+  font-size:clamp(30px,5.2vw,60px);margin:18px 0 0;position:relative;z-index:2;
+  max-width:16ch;
+}
+.hero h1 .hl{color:var(--accent-bright)}
+.hero p.sub{
+  font-weight:300;font-size:clamp(15px,1.9vw,21px);line-height:1.4;color:var(--cloud95);
+  margin-top:14px;max-width:70ch;position:relative;z-index:2;opacity:.94;
+}
+
+/* ---------------------------------------------------------------- TABS ---- */
+.tabs{
+  position:sticky;top:0;z-index:20;
+  background:rgba(255,255,255,.86);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--card-border);
+  padding:0 clamp(12px,5vw,72px);
+  display:flex;gap:6px;overflow-x:auto;
+}
+.tab{
+  appearance:none;border:none;background:none;cursor:pointer;
+  font-family:var(--body);font-weight:600;font-size:15px;color:var(--ink-muted);
+  padding:18px 18px 14px;white-space:nowrap;position:relative;
+  display:flex;align-items:center;gap:9px;transition:color .2s;
+}
+.tab .n{
+  width:22px;height:22px;flex:none;border-radius:50%;display:grid;place-items:center;
+  font-size:12px;font-weight:700;background:var(--cloud95);color:var(--accent);transition:.2s;
+}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--eb15)}
+.tab[aria-selected="true"] .n{background:var(--accent);color:#fff}
+.tab[aria-selected="true"]::after{
+  content:"";position:absolute;left:14px;right:14px;bottom:0;height:3px;border-radius:3px 3px 0 0;
+  background:linear-gradient(90deg,var(--accent),var(--accent-bright));
+}
+
+/* --------------------------------------------------------------- PANELS ---- */
+.wrap{padding:clamp(22px,4vw,44px) clamp(16px,5vw,72px) 72px;max-width:1320px;margin:0 auto}
+.panel{display:none;animation:fade .4s ease both}
+.panel.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+.panel__head{margin-bottom:22px}
+.eyebrow{
+  font-weight:700;font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);
+}
+.panel__head h2{
+  font-family:var(--display);font-weight:600;font-size:clamp(24px,3.4vw,38px);
+  letter-spacing:-.015em;margin-top:8px;color:var(--eb15);
+}
+.panel__head p{font-size:16px;color:var(--ink-muted);margin-top:8px;max-width:78ch;line-height:1.5}
+
+/* grid de cards */
+.grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+.card{
+  background:var(--card);border:1px solid var(--card-border);border-radius:18px;
+  padding:22px;box-shadow:var(--shadow);position:relative;overflow:hidden;
+  transition:transform .18s,box-shadow .18s;display:flex;flex-direction:column;
+}
+.card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.card .ic{
+  width:46px;height:46px;border-radius:13px;display:grid;place-items:center;font-size:23px;
+  background:linear-gradient(150deg,var(--cloud95),#dcefff);margin-bottom:14px;
+}
+.card h3{font-size:18px;font-weight:700;color:var(--eb15);letter-spacing:-.01em}
+.card .role{font-size:12.5px;font-weight:700;color:var(--accent);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px}
+.card p{font-size:14px;color:var(--ink-muted);line-height:1.55;margin-top:8px;flex:1}
+.card .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.pill{
+  font-size:11.5px;font-weight:600;padding:5px 10px;border-radius:20px;
+  background:var(--cloud95);color:var(--eb30);border:1px solid var(--card-border);
+}
+
+/* badges de estado */
+.state{position:absolute;top:16px;right:16px;font-size:11px;font-weight:700;
+  letter-spacing:.05em;text-transform:uppercase;padding:5px 10px;border-radius:20px;display:flex;align-items:center;gap:6px}
+.state.live{background:rgba(4,225,203,.14);color:#067a6e}
+.state.live .dot{width:7px;height:7px;border-radius:50%;background:var(--teal80);box-shadow:0 0 0 0 rgba(4,225,203,.6);animation:pulse 1.8s infinite}
+.state.wip{background:#FFF4D6;color:#8a6b00}
+.state.soon{background:var(--cloud95);color:var(--ink-muted)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(4,225,203,.55)}70%{box-shadow:0 0 0 8px rgba(4,225,203,0)}100%{box-shadow:0 0 0 0 rgba(4,225,203,0)}}
+
+/* botões de ação nos cards */
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.btn{
+  text-decoration:none;font-size:13.5px;font-weight:700;padding:10px 15px;border-radius:11px;
+  display:inline-flex;align-items:center;gap:7px;transition:transform .12s,box-shadow .12s,background .12s;
+}
+.btn--primary{background:linear-gradient(135deg,var(--accent),var(--eb50));color:#fff;box-shadow:0 4px 14px rgba(6,106,254,.28)}
+.btn--primary:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(6,106,254,.36)}
+.btn--ghost{background:var(--cloud95);color:var(--eb30);border:1px solid var(--card-border)}
+.btn--ghost:hover{background:#dcefff}
+/* botão "detalhe técnico" — abre a camada técnica (live vs. referência) para públicos técnicos */
+.btn--tech{background:#0e2f57;color:var(--cloud80);border:1px solid #123a63}
+.btn--tech:hover{background:#123a63;color:#fff}
+/* botão "arquitetura-alvo" — animação da visão (Control Plane · MCP · A2A/Bedrock), âmbar-vidro */
+.btn--alvo{background:#fff7ed;color:#b45309;border:1px dashed #e0b483}
+.btn--alvo:hover{background:#ffedd5;border-color:#b45309}
+/* botão "fazer a simulação real" — self-serve, dispara evento real na org */
+.btn--real{background:linear-gradient(135deg,#067a6e,var(--teal80));color:#04231f;box-shadow:0 4px 14px rgba(4,225,203,.34)}
+.btn--real:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(4,225,203,.44)}
+.card.dim{opacity:.72}
+.card.dim .ic{filter:grayscale(.25)}
+
+/* lista de casos dentro de um card de indústria (aba 4) */
+.card__cases{list-style:none;margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.card__cases li{
+  display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:11px;
+  background:var(--cloud95);border:1px solid var(--card-border);
+}
+.card__cases li .cli{font-weight:700;color:var(--eb15);font-size:13.5px}
+.card__cases li .desc{font-size:12.5px;color:var(--ink-muted);line-height:1.4;margin-top:2px}
+.card__cases li a.play{
+  margin-left:auto;flex:none;text-decoration:none;font-size:12px;font-weight:700;color:#fff;
+  background:linear-gradient(135deg,var(--accent),var(--eb50));padding:6px 11px;border-radius:9px;
+  white-space:nowrap;align-self:center;
+}
+.card__cases li a.play:hover{filter:brightness(1.06)}
+.card__cases .await{font-size:12.5px;color:var(--ink-muted);font-style:italic;padding:2px 2px}
+.card__cta{margin-top:6px}
+.card__count{
+  position:absolute;top:16px;right:16px;font-size:12px;font-weight:700;color:var(--accent);
+  background:var(--cloud95);border:1px solid var(--card-border);border-radius:20px;padding:4px 10px;
+}
+
+/* ------------------------------------------------- ARQUITETURA HEADLESS ---- */
+.arch{display:flex;flex-direction:column;gap:14px}
+.layer{
+  background:var(--card);border:1px solid var(--card-border);border-radius:16px;
+  padding:18px 20px;box-shadow:var(--shadow);position:relative;
+}
+.layer__label{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+.layer__row{display:flex;flex-wrap:wrap;gap:10px}
+.chip{
+  display:flex;align-items:center;gap:9px;padding:11px 15px;border-radius:12px;font-size:14px;font-weight:600;
+  background:var(--cloud95);color:var(--eb15);border:1px solid var(--card-border);
+}
+.chip .e{font-size:18px}
+.layer.core{background:linear-gradient(150deg,#EAF5FE,#dcefff)}
+.layer.data{
+  background:linear-gradient(150deg,#001E5B,#022AC0);color:#fff;border-color:transparent;
+}
+.layer.data .layer__label{color:var(--cloud80)}
+.layer.data .chip{background:rgba(255,255,255,.10);color:#fff;border-color:rgba(255,255,255,.18)}
+.layer.agent{
+  background:linear-gradient(150deg,#053a8f,#066AFE);color:#fff;border-color:transparent;
+}
+.layer.agent .layer__label{color:var(--cloud80)}
+.layer.agent .chip{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.2)}
+.flow-arrow{text-align:center;color:var(--accent);font-size:20px;line-height:0;margin:-4px 0}
+.arch-note{
+  margin-top:18px;font-size:14px;color:var(--ink-muted);line-height:1.6;
+  border-left:3px solid var(--accent-bright);padding-left:14px;
+}
+.arch-note b{color:var(--eb15)}
+
+/* Mapa completo embutido (aba 2) — iframe da arquitetura-headless em modo embed */
+.archmap{
+  position:relative;border:1px solid var(--card-border);border-radius:18px;overflow:hidden;
+  background:linear-gradient(180deg,#F4FAFF,#EAF5FE);box-shadow:var(--shadow);
+}
+.archmap iframe{display:block;width:100%;height:560px;border:0}
+.archmap__hint{
+  font-size:12.5px;color:var(--ink-muted);text-align:center;padding:8px 12px;
+  border-top:1px dashed var(--card-border);background:rgba(255,255,255,.6);
+}
+@media(max-width:600px){ .archmap iframe{height:460px} }
+
+/* estado vazio elegante */
+.empty{
+  border:1.5px dashed var(--card-border);border-radius:16px;padding:26px;text-align:center;
+  color:var(--ink-muted);background:rgba(255,255,255,.5);
+}
+.empty h3{color:var(--eb15);font-size:17px;margin-bottom:6px}
+
+footer.foot{
+  padding:22px clamp(16px,5vw,72px);border-top:1px solid var(--card-border);
+  font-size:12.5px;color:var(--ink-muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;
+}
+
+/* ---------------------------------------------------- MOBILE / RESPONSIVO ---- */
+/* tablet e abaixo: cards mais estreitos cabem sem estouro horizontal */
+@media(max-width:720px){
+  .grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+}
+/* celular: uma coluna, tabs roláveis com snap, alvos de toque >=44px */
+@media(max-width:600px){
+  .hero{padding:26px 20px 22px}
+  .hero h1{font-size:clamp(26px,8vw,34px);max-width:none}
+  .hero p.sub{font-size:15px}
+
+  /* barra de abas: rola no eixo x com snap; esconde a scrollbar mas mantém o toque */
+  .tabs{gap:2px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;
+    padding:0 12px;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{scroll-snap-align:start;font-size:14px;padding:15px 12px 12px;gap:7px}
+  .tab .n{width:20px;height:20px;font-size:11px}
+  /* sublinha da aba ativa acompanha o padding menor */
+  .tab[aria-selected="true"]::after{left:10px;right:10px}
+
+  .wrap{padding:20px 16px 56px}
+  .grid{grid-template-columns:1fr;gap:14px}
+  .card{padding:18px}
+  /* badge de estado não colide com o título em telas estreitas */
+  .card h3{padding-right:92px}
+
+  /* botões de ação: largura cheia, empilhados, com alvo de toque confortável */
+  .actions{gap:8px}
+  .actions .btn{flex:1 1 100%;justify-content:center;min-height:46px;font-size:15px;padding:12px 16px}
+
+  /* arquitetura headless: chips ocupam a linha inteira para leitura no celular */
+  .layer{padding:16px}
+  .chip{flex:1 1 100%;font-size:13.5px}
+
+  footer.foot{flex-direction:column;gap:4px}
+}
+</style>
+</head>
+<body>
+
+  <!-- ============================== HERO ============================== -->
+  <header class="hero">
+    <div class="hero__top">
+      <span class="badge-sf"><img class="sf-logo" src="assets/salesforce-logo.png" alt="Salesforce"> Agentforce</span>
+    </div>
+    <h1>Instituições Financeiras <span class="hl">Agênticas</span> no Brasil</h1>
+    <p class="sub">Um mapa vivo de como bancos e fintechs brasileiras deixam de usar o CRM como
+      simples disparador e passam a operar processos <b>agênticos</b> ponta a ponta — orquestração
+      multi-agentes sobre uma fundação de dados única, canais headless e ação de verdade no Salesforce.</p>
+  </header>
+
+  <!-- ============================== TABS ============================== -->
+  <nav class="tabs" role="tablist" aria-label="Seções">
+    <button class="tab" role="tab" aria-selected="true"  aria-controls="p1" id="t1"><span class="n">1</span> Casos de Uso do Mercado Brasileiro</button>
+    <button class="tab" role="tab" aria-selected="false" aria-controls="p2" id="t2"><span class="n">2</span> Arquitetura Headless</button>
+    <button class="tab" role="tab" aria-selected="false" aria-controls="p3" id="t3"><span class="n">3</span> Simulações Reais</button>
+    <button class="tab" role="tab" aria-selected="false" aria-controls="p5" id="t5"><span class="n">4</span> Simulações Reais MCP</button>
+    <button class="tab" role="tab" aria-selected="false" aria-controls="p4" id="t4"><span class="n">5</span> Casos de Sucesso Reais</button>
+  </nav>
+
+  <div class="wrap">
+
+    <!-- ===================== ABA 1 — CASOS DE USO ===================== -->
+    <section class="panel active" id="p1" role="tabpanel" aria-labelledby="t1">
+      <div class="panel__head">
+        <div class="eyebrow">O que o mercado brasileiro está resolvendo</div>
+        <h2>Casos de uso do mercado brasileiro</h2>
+        <p>As dores recorrentes das instituições financeiras nacionais — e onde a plataforma agêntica muda o jogo.
+          Cada frente vira, mais adiante, uma <b>simulação real</b> na aba 3.</p>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <div class="ic">💳</div>
+          <div class="role">Crédito & Lending</div>
+          <h3>Carrinho de crédito abandonado</h3>
+          <p>Consignado, cartão e empréstimo pessoal com jornadas que travam na esteira. O agente retoma
+            a proposta no canal certo, na hora certa, e conclui a contratação sem intervenção manual.</p>
+          <div class="tags"><span class="pill">Consignado</span><span class="pill">Cartão</span><span class="pill">EP</span></div>
+        </div>
+        <div class="card">
+          <div class="ic">📈</div>
+          <div class="role">Investimentos & Seguros</div>
+          <h3>Réguas de oferta 1:1</h3>
+          <p>PIX in, abandono de aplicação e recomendação de produto hoje presos a batches e Airflow.
+            O agente decide e age em tempo real, com contexto do cliente 360.</p>
+          <div class="tags"><span class="pill">PIX in</span><span class="pill">Next Best Action</span></div>
+        </div>
+        <div class="card">
+          <div class="ic">📞</div>
+          <div class="role">Cobrança & Collections</div>
+          <h3>Orquestração sem hipersaturação</h3>
+          <p>Régua multicanal (app, WhatsApp, voz, LNO) que respeita a saturação do cliente e otimiza
+            rolagem, PDD e ROI — com visão única do devedor, não fragmentada por e-mail.</p>
+          <div class="tags"><span class="pill">Rolagem</span><span class="pill">PDD</span><span class="pill">ROI</span></div>
+        </div>
+        <div class="card">
+          <div class="ic">🛡️</div>
+          <div class="role">Atendimento & Ouvidoria</div>
+          <h3>Do chat do app ao Bacen (RDR)</h3>
+          <p>Reclamação registrada pelo cliente vira Caso, aciona o time e devolve resposta — inclusive
+            quando entra pelo Registro de Reclamações do Banco Central (Res. BCB 222/2022).</p>
+          <div class="tags"><span class="pill">Bacen RDR</span><span class="pill">WhatsApp</span><span class="pill">Voz</span></div>
+        </div>
+        <div class="card">
+          <div class="ic">🏢</div>
+          <div class="role">PME & Abertura de Conta</div>
+          <h3>Onboarding PJ agêntico</h3>
+          <p>Do lead ao cliente ativado: captação, nutrição, qualificação, conversão e ativação —
+            com gates de documento e Next Best Action que só avançam com ação real do cliente.</p>
+          <div class="tags"><span class="pill">Conta PJ</span><span class="pill">KYC</span><span class="pill">NBA</span></div>
+        </div>
+        <div class="card">
+          <div class="ic">💬</div>
+          <div class="role">Marketing & Mensageria</div>
+          <h3>WhatsApp que decide, não só dispara</h3>
+          <p>Grande volume contratado e subutilizado. O agente transforma o canal em conversa
+            orquestrada — colaboração de time no Slack e decisão na plataforma, não na régua estática.</p>
+          <div class="tags"><span class="pill">WhatsApp</span><span class="pill">Slack</span><span class="pill">Data Cloud</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== ABA 2 — ARQUITETURA ===================== -->
+    <section class="panel" id="p2" role="tabpanel" aria-labelledby="t2">
+      <div class="panel__head">
+        <div class="eyebrow">Uma fundação, muitos canais</div>
+        <h2>Arquitetura headless</h2>
+        <p>O Salesforce como <b>control plane</b>: a inteligência vive na plataforma e nos dados, não presa à tela.
+          Os canais são intercambiáveis; o cérebro agêntico é o mesmo. Abaixo, o <b>mapa completo</b> da
+          arquitetura de referência multi-agente — todas as camadas ativas ao mesmo tempo.</p>
+        <div class="actions" style="margin-top:14px">
+          <a class="btn btn--primary" href="simulacoes/arquitetura-headless.html" target="_blank" rel="noopener">🎬 Simular cenários (jornada animada)</a>
+        </div>
+      </div>
+      <!-- MAPA COMPLETO — arquitetura-headless.html embutida em modo embed (só o mapa, sem cromo).
+           Os 6 cenários animados abrem a página inteira pelo botão "Simular cenários" acima. -->
+      <div class="archmap">
+        <iframe src="simulacoes/arquitetura-headless.html?embed=1" title="Mapa completo da arquitetura de referência multi-agente headless" loading="lazy"></iframe>
+        <div class="archmap__hint">🗺️ Mapa completo · todas as camadas + mapeamento Salesforce ·
+          <b>🎬 Simular cenários</b> abre as 6 jornadas de adoção animadas em nova aba.</div>
+      </div>
+      <p class="arch-note">A régua deixa de ser estática e a decisão sai do batch: <b>o agente lê o contexto
+        do Data Cloud, decide e age em tempo real</b> pelo canal do cliente — e reúne o time no Slack quando
+        precisa de gente. Trocar de canal não exige reescrever a inteligência.</p>
+    </section>
+
+    <!-- ===================== ABA 3 — SIMULAÇÕES ===================== -->
+    <section class="panel" id="p3" role="tabpanel" aria-labelledby="t3">
+      <div class="panel__head">
+        <div class="eyebrow">Processos agênticos que estamos construindo — ao vivo no Salesforce</div>
+        <h2>Simulações reais</h2>
+        <p>Cada card é uma persona/processo do banco. Os que estão <b>ao vivo</b> disparam eventos reais na org
+          (<code>somaOrg</code>) — nada mockado. Os demais entram conforme construímos juntos.</p>
+        <p style="margin-top:6px"><b>🚀 Fazer a simulação real:</b> você mesmo dispara a jornada — converse com o
+          Chat do Banco Digital, peça um crédito consignado pelo CPF, registre uma reclamação na porta do Bacen ou
+          entre com leads pela landing do banco. <b>▶ Ver simulação</b> abre a animação explicada do fluxo.
+          <b>🔬 Detalhe técnico</b> abre a camada técnica para arquitetos — o stack real de cada jornada
+          (canal MIAW, planner Atlas, ações Apex, objeto de estado) separado, com honestidade, do que ainda é
+          arquitetura de referência (MCP Servers, Control Plane, A2A).</p>
+      </div>
+      <div class="grid">
+
+        <!-- Officer PME = Funil Comercial PME (PRONTO / AO VIVO) -->
+        <div class="card">
+          <span class="state live"><span class="dot"></span> Ao vivo</span>
+          <div class="ic">🏢</div>
+          <div class="role">Officer PME</div>
+          <h3>Funil Comercial PME Agêntico</h3>
+          <p>Orquestração multi-agentes do funil: Lead → Nutrição → Qualificação → Conversão → Onboarding →
+            Ativação → Oportunidade. Botões reais publicam <code>Funil_Evento__e</code> e o motor avança o
+            estágio; gerou Oportunidade de verdade no teste E2E.</p>
+          <div class="tags"><span class="pill">Platform Events</span><span class="pill">Officer + Gestor</span><span class="pill">SLDS2</span></div>
+          <div class="actions">
+            <a class="btn btn--real" href="simulacoes/leads.html" target="_blank" rel="noopener">🚀 Fazer a simulação real</a>
+            <a class="btn btn--primary" href="simulacoes/funil-comercial.html" target="_blank" rel="noopener">▶ Ver simulação</a>
+            <a class="btn btn--tech" href="simulacoes/detalhe-tecnico.html?j=funil" target="_blank" rel="noopener">🔬 Detalhe técnico</a>
+            <a class="btn btn--ghost" href="https://trailsignup-2979e1c6606a3b.lightning.force.com/lightning/n/Officer_Funil_PME" target="_blank" rel="noopener">Tela do Officer</a>
+            <a class="btn btn--ghost" href="https://trailsignup-2979e1c6606a3b.lightning.force.com/lightning/n/Gestor_Funil_PME" target="_blank" rel="noopener">Carteira do Gestor</a>
+          </div>
+        </div>
+
+        <!-- Atendimento = Atendimento Agêntico (PRONTO / AO VIVO) -->
+        <div class="card">
+          <span class="state live"><span class="dot"></span> Ao vivo</span>
+          <div class="ic">🛡️</div>
+          <div class="role">Atendimento</div>
+          <h3>Atendimento Agêntico · Orquestrador Multi-Agentes</h3>
+          <p>Cliente fala pelo chat do app (MIAW/Agentforce ao vivo) ou pela landing do Bacen; o orquestrador
+            aciona agentes especialistas, resolve no Slack com narração e fecha com KB + Canvas. Três níveis,
+            duas portas de entrada.</p>
+          <div class="tags"><span class="pill">MIAW ao vivo</span><span class="pill">Slack</span><span class="pill">Bacen RDR</span></div>
+          <div class="actions">
+            <a class="btn btn--real" href="simulacoes/chat-banco.html" target="_blank" rel="noopener">🚀 Fazer a simulação real</a>
+            <a class="btn btn--primary" href="simulacoes/atendimento-agentico.html" target="_blank" rel="noopener">▶ Ver orquestração</a>
+            <a class="btn btn--alvo" href="simulacoes/atendimento-arquitetura-alvo.html" target="_blank" rel="noopener">🔮 Arquitetura-alvo</a>
+            <a class="btn btn--tech" href="simulacoes/detalhe-tecnico.html?j=atendimento" target="_blank" rel="noopener">🔬 Detalhe técnico</a>
+            <a class="btn btn--ghost" href="simulacoes/bacen.html" target="_blank" rel="noopener">🏛️ Porta do Bacen</a>
+            <a class="btn btn--ghost" href="https://trailsignup-2979e1c6606a3b.lightning.force.com/lightning/app/SDO_Service_Console" target="_blank" rel="noopener">Service Console</a>
+            <a class="btn btn--ghost" href="https://trailsignup-2979e1c6606a3b.lightning.force.com/lightning/o/Case/list" target="_blank" rel="noopener">Casos na org</a>
+          </div>
+        </div>
+
+        <!-- Consignado = Jornada Comercial de Crédito Consignado (PRONTO / AO VIVO) -->
+        <div class="card">
+          <span class="state live"><span class="dot"></span> Ao vivo</span>
+          <div class="ic">🏷️</div>
+          <div class="role">Comercial · Crédito Consignado</div>
+          <h3>Consignado Agêntico · Orquestrador Comercial por CPF</h3>
+          <p>Cliente pede o consignado no chat do app (MIAW/Agentforce ao vivo); o Orquestrador Comercial
+            identifica por <b>CPF</b> e deriva para os especialistas — Oferta → Negociação → Assinatura →
+            Liberação. Cada ação grava de verdade na Opportunity (<code>PROP-&lt;cpf&gt;</code>) e o estágio avança
+            até <b>Closed Won</b>. E2E provado ao vivo: R$ 8.000 · 24x · crédito liberado.</p>
+          <div class="tags"><span class="pill">MIAW ao vivo</span><span class="pill">Identifica por CPF</span><span class="pill">Opportunity</span></div>
+          <div class="actions">
+            <a class="btn btn--real" href="simulacoes/chat-consignado.html" target="_blank" rel="noopener">🚀 Fazer a simulação real</a>
+            <a class="btn btn--primary" href="simulacoes/consignado-clt.html" target="_blank" rel="noopener">▶ Ver simulação</a>
+            <a class="btn btn--tech" href="simulacoes/detalhe-tecnico.html?j=consignado" target="_blank" rel="noopener">🔬 Detalhe técnico</a>
+            <a class="btn btn--ghost" href="https://trailsignup-2979e1c6606a3b.lightning.force.com/lightning/o/Opportunity/list" target="_blank" rel="noopener">Propostas na org</a>
+          </div>
+        </div>
+
+        <!-- restantes do desenho — em construção -->
+        <div class="card dim">
+          <span class="state wip">Em construção</span>
+          <div class="ic">💼</div>
+          <div class="role">Banker Wealth</div>
+          <h3>Assessoria de investimentos agêntica</h3>
+          <p>Agente que prepara a reunião do banker, sugere realocação e antecipa oportunidades de
+            wealth com base no perfil 360 do cliente.</p>
+          <div class="tags"><span class="pill">Próxima onda</span></div>
+        </div>
+
+        <div class="card dim">
+          <span class="state wip">Em construção</span>
+          <div class="ic">🤝</div>
+          <div class="role">Gerente de Relacionamento · Varejo</div>
+          <h3>Carteira de varejo assistida</h3>
+          <p>Priorização diária da carteira, próximas melhores ações e retenção — o gerente atua onde
+            o agente aponta maior impacto.</p>
+          <div class="tags"><span class="pill">Próxima onda</span></div>
+        </div>
+
+        <div class="card dim">
+          <span class="state wip">Em construção</span>
+          <div class="ic">📊</div>
+          <div class="role">Officer Comercial</div>
+          <h3>Cobertura comercial agêntica</h3>
+          <p>Visão de portfólio, metas e pipeline com o agente sinalizando risco e oportunidade
+            por segmento e por produto.</p>
+          <div class="tags"><span class="pill">Próxima onda</span></div>
+        </div>
+
+        <div class="card dim">
+          <span class="state wip">Em construção</span>
+          <div class="ic">⚙️</div>
+          <div class="role">Middle Office</div>
+          <h3>Retaguarda orquestrada</h3>
+          <p>Esteira de exceções, análise documental e handoffs entre times — o agente resolve o
+            operacional e escala só o que precisa de gente.</p>
+          <div class="tags"><span class="pill">Próxima onda</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== ABA 4 — SIMULAÇÕES REAIS MCP ===================== -->
+    <section class="panel" id="p5" role="tabpanel" aria-labelledby="t5">
+      <div class="panel__head">
+        <div class="eyebrow">As mesmas jornadas — agora roteadas pelo Salesforce Platform MCP (ao vivo)</div>
+        <h2>Simulações reais via MCP</h2>
+        <p>Idênticas às da aba anterior, mas <b>o caminho até a org passa pelo Salesforce Platform MCP</b> — o servidor MCP
+          <b>hospedado pela própria Salesforce</b> (<code>headless-360</code>), não o MuleSoft Agent Fabric. Cada jornada roda o
+          protocolo de verdade na <code>somaOrg</code>: <b>OAuth → initialize → discover → describe → dispatch → dados reais</b>.
+          O segredo do app fica só no servidor (a ponte); o navegador nunca vê token.</p>
+        <p style="margin-top:6px"><b>🔌 Ver o handshake ao vivo:</b> abre o painel que acende cada passo do MCP e lista os
+          <b>registros reais</b> (Lead / Opportunity / Case) que o <code>dispatch</code> de GraphQL trouxe da org.
+          <b>Honestidade:</b> o MCP é um <b>roteador curado</b> — GraphQL é roteável (lê e grava); SOQL cru e Apex REST custom
+          retornam <code>ROUTE_NOT_FOUND</code>. As <b>conversas</b> (chat do app) seguem no Agentforce via MIAW, fora do MCP.</p>
+      </div>
+      <div class="grid">
+
+        <!-- Handshake MCP — o cartão-âncora -->
+        <div class="card" style="grid-column:1/-1">
+          <span class="state live"><span class="dot"></span> MCP ao vivo</span>
+          <div class="ic">🔌</div>
+          <div class="role">Salesforce Platform MCP · headless-360</div>
+          <h3>Handshake + jornadas de dados via MCP</h3>
+          <p>Um só painel mostra a conexão de verdade (serverInfo, <code>mcp-session-id</code>, as 4 ferramentas
+            <code>discover/describe/dispatch/dispatch_readonly</code>) e roda as 3 jornadas de dados por GraphQL curado,
+            listando os registros reais que voltaram da org. Nada mockado.</p>
+          <div class="tags"><span class="pill">OAuth client_credentials</span><span class="pill">MCP initialize</span><span class="pill">GraphQL via dispatch</span></div>
+          <div class="actions">
+            <a class="btn btn--real" href="simulacoes/simulacoes-mcp.html" target="_blank" rel="noopener">🔌 Ver o handshake ao vivo</a>
+            <a class="btn btn--primary" href="simulacoes/simulacoes-mcp.html?j=leads" target="_blank" rel="noopener">▶ Rodar jornada de dados</a>
+            <a class="btn btn--ghost" href="https://trailsignup-2979e1c6606a3b.lightning.force.com/lightning/o/Lead/list" target="_blank" rel="noopener">Registros na org</a>
+          </div>
+        </div>
+
+        <!-- Officer PME — via MCP -->
+        <div class="card">
+          <span class="state live"><span class="dot"></span> Ao vivo via MCP</span>
+          <div class="ic">🏢</div>
+          <div class="role">Officer PME</div>
+          <h3>Funil Comercial PME · leitura via MCP</h3>
+          <p>Os <b>Leads reais</b> do funil PME lidos por <b>GraphQL roteado pelo MCP</b> (UIAPI), com o trace
+            <code>discover → describe → dispatch</code> visível. O disparo do funil (Platform Events) segue como na aba 3;
+            aqui o foco é a <b>leitura curada via MCP</b>.</p>
+          <div class="tags"><span class="pill">Lead (UIAPI)</span><span class="pill">GraphQL</span><span class="pill">dispatch</span></div>
+          <div class="actions">
+            <a class="btn btn--real" href="simulacoes/simulacoes-mcp.html?j=leads" target="_blank" rel="noopener">🔌 Rodar via MCP</a>
+            <a class="btn btn--ghost" href="https://trailsignup-2979e1c6606a3b.lightning.force.com/lightning/o/Lead/list" target="_blank" rel="noopener">Leads na org</a>
+          </div>
+        </div>
+
+        <!-- Consignado — via MCP -->
+        <div class="card">
+          <span class="state live"><span class="dot"></span> Ao vivo via MCP</span>
+          <div class="ic">🏷️</div>
+          <div class="role">Comercial · Crédito Consignado</div>
+          <h3>Consignado · Opportunities via MCP</h3>
+          <p>As <b>Opportunities reais</b> (<code>PROP-&lt;cpf&gt;</code>) lidas via MCP/GraphQL — incluindo a que fechou em
+            <b>Closed Won</b> (R$ 8.000 · 24x) do E2E provado. Mesmo caminho curado <code>discover → describe → dispatch</code>.</p>
+          <div class="tags"><span class="pill">Opportunity</span><span class="pill">GraphQL</span><span class="pill">Closed Won</span></div>
+          <div class="actions">
+            <a class="btn btn--real" href="simulacoes/simulacoes-mcp.html?j=consignado" target="_blank" rel="noopener">🔌 Rodar via MCP</a>
+            <a class="btn btn--ghost" href="https://trailsignup-2979e1c6606a3b.lightning.force.com/lightning/o/Opportunity/list" target="_blank" rel="noopener">Propostas na org</a>
+          </div>
+        </div>
+
+        <!-- Atendimento — via MCP -->
+        <div class="card">
+          <span class="state live"><span class="dot"></span> Ao vivo via MCP</span>
+          <div class="ic">🛡️</div>
+          <div class="role">Atendimento</div>
+          <h3>Atendimento · Cases via MCP</h3>
+          <p>Os <b>Cases reais</b> do atendimento (inclui o Pix contestado <code>00001409</code>) lidos via MCP/GraphQL. A
+            <b>conversa</b> em si segue no Agentforce via MIAW; aqui o MCP entrega a <b>leitura de estado</b> da org.</p>
+          <div class="tags"><span class="pill">Case</span><span class="pill">GraphQL</span><span class="pill">MIAW à parte</span></div>
+          <div class="actions">
+            <a class="btn btn--real" href="simulacoes/simulacoes-mcp.html?j=atendimento" target="_blank" rel="noopener">🔌 Rodar via MCP</a>
+            <a class="btn btn--ghost" href="https://trailsignup-2979e1c6606a3b.lightning.force.com/lightning/o/Case/list" target="_blank" rel="noopener">Casos na org</a>
+          </div>
+        </div>
+
+      </div>
+      <p class="arch-note" style="margin-top:22px">Requer a <b>ponte MCP</b> no ar (porta 8795) com o segredo do app em variável de
+        ambiente no servidor. Sem a ponte, o painel avisa com honestidade — nada é simulado. As páginas da aba 3 continuam
+        idênticas; esta aba é a versão <b>roteada por MCP</b> das mesmas jornadas de dados.</p>
+    </section>
+
+    <!-- ===================== ABA 5 — CASOS DE SUCESSO ===================== -->
+    <section class="panel" id="p4" role="tabpanel" aria-labelledby="t4">
+      <div class="panel__head">
+        <div class="eyebrow">Prova social — clientes Salesforce no Brasil</div>
+        <h2>Casos de sucesso reais</h2>
+        <p>Um card por <b>indústria / processo de negócio</b> de instituição financeira. Cada card recebe os
+          vídeos públicos de clientes Salesforce do Brasil à medida que os confirmamos — os links levam ao
+          case/depoimento oficial.</p>
+      </div>
+      <!-- Grid data-driven: os cards são gerados a partir do objeto CASOS no <script> abaixo.
+           Cada balde (indústria/processo) tem uma lista `casos` de {cliente, titulo, url, tipo, resumo}.
+           SÓ entram casos com vídeo/URL público REAL e verificado. Enquanto a lista está vazia,
+           o card mostra o placeholder "aguardando" e o contador fica em 0. -->
+      <div class="grid" id="casesGrid"></div>
+      <p class="arch-note" style="margin-top:22px">Estamos buscando os vídeos públicos de clientes Salesforce do Brasil
+        para preencher cada indústria. Assim que a lista estiver confirmada, cada card mostra os cases com o link do vídeo.</p>
+    </section>
+
+  </div>
+
+  <footer class="foot">
+    <span>Instituições Financeiras Agênticas no Brasil · Salesforce · Agentforce</span>
+    <span>Identidade visual: Brand Central 2026 · org somaOrg</span>
+  </footer>
+
+<script>
+// ============================================================================
+// ABA 4 — CASOS DE SUCESSO REAIS (data-driven)
+// Um balde por indústria/processo. `casos` só recebe casos com VÍDEO/URL público
+// REAL e VERIFICADO ({cliente, titulo, url, tipo:'video'|'case', resumo}).
+// Enquanto vazio → placeholder "aguardando" + contador 0. Popular = editar aqui.
+// ============================================================================
+const CASOS = [
+  { ic:"🏦", role:"Bancos & Varejo Bancário",           h:"Atendimento e relacionamento",
+    p:"Grandes bancos de varejo: serviço ao cliente, atendimento omnichannel e relacionamento em escala.", casos:[] },
+  { ic:"💸", role:"Fintechs & Bancos Digitais",          h:"Aquisição e crescimento",
+    p:"Nativos digitais: onboarding, crescimento da base e jornadas 100% no app.", casos:[] },
+  { ic:"💳", role:"Meios de Pagamento & Adquirência",    h:"Suporte ao lojista",
+    p:"Adquirentes e carteiras digitais: atendimento ao merchant, ativação e retenção.", casos:[] },
+  { ic:"🛡️", role:"Seguros & Previdência",               h:"Cotação, apólice e sinistro",
+    p:"Seguradoras: jornada de cotação, gestão de apólice, regulação de sinistro e corretor 360.", casos:[] },
+  { ic:"🤝", role:"Cooperativas de Crédito",             h:"Cooperado e crédito",
+    p:"Sistemas cooperativistas: relacionamento com o cooperado, concessão de crédito e capilaridade.", casos:[] },
+  { ic:"📈", role:"Investimentos & Wealth",              h:"Assessoria e captação",
+    p:"Corretoras e gestoras: assessoria de investimentos, captação e experiência do investidor.", casos:[] },
+];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+(function renderCasos(){
+  const grid = document.getElementById('casesGrid');
+  if(!grid) return;
+  grid.innerHTML = CASOS.map(b => {
+    const n = b.casos.length;
+    const lista = n === 0
+      ? '<li class="await">Aguardando casos verificados…</li>'
+      : b.casos.map(c => `<li>
+            <div>
+              <div class="cli">${esc(c.cliente)}</div>
+              <div class="desc">${esc(c.titulo)}${c.resumo ? ' — ' + esc(c.resumo) : ''}</div>
+            </div>
+            <a class="play" href="${esc(c.url)}" target="_blank" rel="noopener">${c.tipo === 'video' ? '▶ Vídeo' : 'Ver case'}</a>
+          </li>`).join('');
+    return `<div class="card">
+        <span class="card__count">${n}</span>
+        <div class="ic">${b.ic}</div>
+        <div class="role">${esc(b.role)}</div>
+        <h3>${esc(b.h)}</h3>
+        <p>${esc(b.p)}</p>
+        <ul class="card__cases">${lista}</ul>
+      </div>`;
+  }).join('');
+})();
+
+// ---- Abas: acessível (roles ARIA), teclado (← →), e ?aba=N na URL ----
+const tabs = [...document.querySelectorAll('.tab')];
+const panels = [...document.querySelectorAll('.panel')];
+function selecionar(i){
+  tabs.forEach((t,k)=>{
+    const on = k===i;
+    t.setAttribute('aria-selected', on?'true':'false');
+    t.tabIndex = on ? 0 : -1;
+    panels[k].classList.toggle('active', on);
+  });
+  history.replaceState(null,'', '?aba='+(i+1));
+}
+tabs.forEach((t,i)=>{
+  t.addEventListener('click', ()=>selecionar(i));
+  t.addEventListener('keydown', e=>{
+    if(e.key==='ArrowRight'){ const n=(i+1)%tabs.length; tabs[n].focus(); selecionar(n); }
+    if(e.key==='ArrowLeft'){  const n=(i-1+tabs.length)%tabs.length; tabs[n].focus(); selecionar(n); }
+  });
+});
+// abre na aba pedida pela URL (?aba=3)
+const alvo = parseInt(new URLSearchParams(location.search).get('aba'),10);
+if(alvo>=1 && alvo<=tabs.length) selecionar(alvo-1);
+</script>
+</body>
+</html>

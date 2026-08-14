@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arquitetura de Referência Multi-Agente · Headless — a jornada de adoção, camada por camada</title>
+<style>
+/* ============================================================================
+   IDENTIDADE — Salesforce Brand Central 2026 (mesmos tokens do Hub)
+   ============================================================================ */
+:root{
+  --cloud95:#EAF5FE; --cloud80:#90D0FE; --cloud68:#00B3FF;
+  --eb50:#066AFE; --eb30:#022AC0; --eb15:#001E5B;
+  --teal80:#04E1CB; --yellow80:#FCC003; --pink60:#FF538A; --violet65:#D17DFE;
+  --ink:#001E5B; --ink-soft:#022AC0; --ink-muted:#5b7bb5;
+  --card:#ffffff; --card-border:rgba(2,42,192,.14);
+  --shadow:0 10px 30px rgba(1,20,60,.10); --shadow-lg:0 20px 52px rgba(1,20,60,.20);
+  --glow:0 0 0 3px rgba(0,179,255,.30), 0 0 26px rgba(0,179,255,.5);
+  /* cores dos fluxos numerados (fiéis ao deck) */
+  --f-call:#FF538A; --f-reason:#D17DFE; --f-rag:#04E1CB; --f-native:#FCC003; --f-feed:#066AFE; --f-orch:#00B3FF;
+  --display:"AvantGarde SF","Trebuchet MS",Avenir,"Segoe UI",sans-serif;
+  --body:"Salesforce Sans",-apple-system,system-ui,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);color:var(--ink);
+  background:radial-gradient(120% 80% at 82% -10%,rgba(0,179,255,.10) 0,transparent 55%),
+    linear-gradient(180deg,#F4FAFF 0,#EAF5FE 100%);min-height:100vh}
+
+/* ---------------------------------------------------------------- HERO ---- */
+.hero{position:relative;overflow:hidden;color:#fff;padding:20px clamp(16px,4vw,44px) 16px;
+  background:radial-gradient(120% 120% at 84% 6%,#066AFE 0,transparent 52%),
+    linear-gradient(150deg,#001E5B 0,#022AC0 52%,#066AFE 100%)}
+.hero::after{content:"";position:absolute;right:-120px;top:-120px;width:380px;height:380px;
+  background:radial-gradient(circle,rgba(0,179,255,.45),transparent 62%);filter:blur(6px);pointer-events:none}
+.hero__top{display:flex;align-items:center;gap:12px;position:relative;z-index:2}
+.badge-sf{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:12px;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--cloud80)}
+.badge-sf .cloud{width:24px;height:16px;border-radius:8px;background:#fff;position:relative;flex:none;box-shadow:0 0 0 3px rgba(255,255,255,.16)}
+.badge-sf .cloud::before,.badge-sf .cloud::after{content:"";position:absolute;background:#fff;border-radius:50%}
+.badge-sf .cloud::before{width:11px;height:11px;left:-4px;top:4px}
+.badge-sf .cloud::after{width:13px;height:13px;right:-5px;top:1px}
+.badge-sf .sf-logo{height:24px;width:auto;flex:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.25))}
+.back{margin-left:auto;color:var(--cloud95);text-decoration:none;font-weight:700;font-size:13px;
+  border:1px solid rgba(255,255,255,.28);border-radius:20px;padding:7px 14px;transition:.15s}
+.back:hover{background:rgba(255,255,255,.14)}
+.hero h1{font-family:var(--display);font-weight:600;letter-spacing:-.02em;line-height:1.04;
+  font-size:clamp(24px,3.6vw,40px);margin:12px 0 0;position:relative;z-index:2;max-width:24ch}
+.hero h1 .hl{color:var(--cloud68)}
+.hero p.sub{font-weight:300;font-size:clamp(13px,1.5vw,17px);line-height:1.4;color:var(--cloud95);
+  margin-top:8px;max-width:96ch;position:relative;z-index:2;opacity:.94}
+
+/* --------------------------------------------------------------- BANNER ---- */
+.keymsg{margin:12px clamp(16px,4vw,44px) 0;background:linear-gradient(90deg,#0e2f57,#123a63);
+  color:#dcefff;border-radius:12px;padding:10px 16px;font-size:13px;font-weight:600;
+  border:1px solid rgba(255,255,255,.12);display:flex;gap:10px;align-items:center}
+.keymsg b{color:var(--cloud68)}
+.keymsg .k{font-size:18px}
+
+/* ------------------------------------------------------------- CONTROLES ---- */
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px clamp(16px,4vw,44px) 4px}
+.scene-rail{display:flex;gap:6px;flex-wrap:wrap}
+.scn{border:1.5px solid var(--card-border);background:#fff;color:var(--ink);border-radius:11px;
+  padding:8px 12px;font-size:12.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;
+  transition:.16s;box-shadow:var(--shadow)}
+.scn:hover{transform:translateY(-2px);border-color:var(--cloud68)}
+.scn.active{border-color:var(--eb50);box-shadow:var(--glow)}
+.scn .num{width:20px;height:20px;flex:none;border-radius:50%;background:var(--cloud95);color:var(--eb50);
+  font-size:11px;font-weight:800;display:grid;place-items:center}
+.scn.active .num{background:var(--eb50);color:#fff}
+.spacer{flex:1}
+.btn{border:none;border-radius:11px;padding:10px 15px;font-size:13px;font-weight:800;cursor:pointer;
+  display:inline-flex;align-items:center;gap:7px;transition:.16s}
+.btn--play{background:linear-gradient(135deg,var(--eb50),var(--cloud68));color:#fff;box-shadow:0 8px 20px rgba(6,106,254,.34)}
+.btn--play:hover{transform:translateY(-2px)}
+.btn--ghost{background:#fff;border:1.5px solid var(--card-border);color:var(--ink)}
+.btn--ghost:hover{border-color:var(--cloud68)}
+.btn--ghost.on{border-color:var(--eb50);box-shadow:var(--glow);color:var(--eb30)}
+
+/* --------------------------------------------------------------- STAGE ---- */
+.stage-scroll{overflow-x:auto;padding:10px clamp(16px,4vw,44px) 6px}
+.stage{position:relative;min-width:1060px}
+#wires{position:absolute;left:0;top:0;pointer-events:none;z-index:5;overflow:visible}
+#packet{position:absolute;width:16px;height:16px;border-radius:50%;z-index:6;opacity:0;pointer-events:none;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle at 35% 35%,#fff,var(--cloud68) 55%,var(--eb50));
+  box-shadow:0 0 16px 4px rgba(0,179,255,.8)}
+#packet.go{opacity:1}
+
+.top-cols{display:grid;grid-template-columns:1.15fr 1.25fr 1.2fr .95fr 1fr 1.2fr;gap:11px;position:relative;z-index:2}
+.mid-cols{display:grid;grid-template-columns:1.9fr 1.1fr;gap:11px;margin-top:11px;position:relative;z-index:2}
+
+.col{background:rgba(255,255,255,.5);border:1.5px solid var(--card-border);border-radius:18px;
+  padding:12px 11px;display:flex;flex-direction:column;position:relative;transition:.3s;backdrop-filter:blur(2px)}
+.col.dim{opacity:.32;filter:saturate(.55)}
+.col.lit{opacity:1;border-color:var(--cloud68);box-shadow:0 0 0 2px rgba(0,179,255,.22),var(--shadow-lg);background:rgba(255,255,255,.9)}
+.lname{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:var(--eb15);
+  text-align:center;margin-bottom:10px;line-height:1.2;min-height:26px;display:flex;flex-direction:column;justify-content:center}
+.lname small{display:block;font-weight:700;letter-spacing:0;text-transform:none;color:var(--ink-muted);font-size:10px;margin-top:2px}
+.sf-tag{display:none;margin:0 auto 9px;font-size:11px;font-weight:800;color:#fff;
+  background:linear-gradient(135deg,var(--eb30),var(--eb50));border-radius:20px;padding:3px 11px;white-space:nowrap}
+body.show-sf .sf-tag{display:inline-block}
+
+.node{background:#fff;border:1.5px solid var(--card-border);border-radius:13px;padding:9px 10px;margin-bottom:8px;
+  box-shadow:var(--shadow);transition:.25s;position:relative}
+.node:last-child{margin-bottom:0}
+.node .t{font-weight:800;font-size:12px;display:flex;align-items:center;gap:7px;color:var(--eb15)}
+.node .t .e{font-size:15px}
+.node .d{font-size:10px;color:var(--ink-muted);margin-top:3px;line-height:1.35}
+.node.on{border-color:var(--eb50);box-shadow:var(--glow);transform:translateY(-2px)}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.chips span{font-size:10.5px;font-weight:700;background:var(--cloud95);color:var(--eb30);
+  border:1px solid var(--card-border);border-radius:16px;padding:3px 8px;display:inline-flex;align-items:center;gap:4px}
+.node.mut{flex:1}
+
+/* control plane (super agent) */
+.cplane{background:linear-gradient(180deg,#0e2f57,#0a2540);border-radius:12px;padding:9px;margin-top:8px}
+.cplane .cpt{color:#bfe6ff;font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;text-align:center;margin-bottom:6px}
+.cbar{background:rgba(255,255,255,.08);color:#eaf6ff;border-radius:7px;padding:5px 8px;font-size:10px;font-weight:700;
+  margin:4px 0;border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;gap:6px}
+.cbar .dot{width:6px;height:6px;border-radius:50%;background:var(--cloud68);flex:none}
+.superrow{display:flex;gap:6px;justify-content:center;margin-bottom:2px}
+.superrow .sa{flex:1;background:#fff;border:1.5px solid var(--card-border);border-radius:10px;padding:6px 4px;text-align:center;
+  font-size:9.5px;font-weight:800;color:var(--eb15)}
+.superrow .sa .e{font-size:16px;display:block}
+
+/* business apps agent grid */
+.agentgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:6px}
+.agentgrid .a{aspect-ratio:1;border-radius:9px;background:linear-gradient(150deg,var(--cloud95),#dcefff);
+  border:1px solid var(--card-border);display:grid;place-items:center;font-size:16px}
+
+/* mcp rows */
+.mcprow{font-size:10.5px;font-weight:700;color:var(--eb15);background:#fff;border:1.5px solid var(--card-border);
+  border-radius:9px;padding:6px 9px;margin-bottom:5px;display:flex;align-items:center;gap:7px}
+.mcprow .e{font-size:13px}
+.mcprow:last-child{margin-bottom:0}
+
+/* apps sub-cards */
+.appbox{border-radius:11px;padding:8px;margin-bottom:7px;border:1.5px solid var(--card-border)}
+.appbox:last-child{margin-bottom:0}
+.appbox .h{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;color:var(--eb30)}
+.appbox.crm{background:rgba(0,179,255,.07);border-color:rgba(0,179,255,.3)}
+.appbox.erp{background:rgba(252,192,3,.10);border-color:rgba(252,192,3,.4)}
+.appbox.core{background:rgba(4,225,203,.10);border-color:rgba(4,225,203,.4)}
+.appbox .mini{display:flex;gap:5px;flex-wrap:wrap}
+.appbox .mini span{font-size:9.5px;font-weight:700;color:var(--eb15);background:#fff;border:1px solid var(--card-border);border-radius:14px;padding:2px 7px}
+
+/* context layer internals */
+.ctxrow{display:flex;gap:6px;margin-bottom:6px}
+.ctxrow .c{flex:1;background:#fff;border:1.5px solid var(--card-border);border-radius:9px;padding:6px 4px;text-align:center;font-size:9px;font-weight:800;color:var(--eb15)}
+.ctxrow .c .e{font-size:16px;display:block;margin-bottom:2px}
+.ctxbar{background:linear-gradient(90deg,var(--eb30),var(--eb50));color:#fff;border-radius:7px;padding:5px 8px;font-size:9.5px;font-weight:700;margin-bottom:4px}
+
+/* model chips */
+.modelgrid{display:flex;flex-wrap:wrap;gap:5px}
+.modelgrid span{font-size:10px;font-weight:800;color:var(--eb15);background:#fff;border:1.5px solid var(--card-border);border-radius:8px;padding:5px 9px}
+
+/* trust band */
+.band{border-radius:14px;padding:10px 14px;margin-top:11px;position:relative;z-index:2;transition:.3s;text-align:center;
+  font-size:11.5px;font-weight:700;letter-spacing:.2px}
+.band.dim{opacity:.32}
+.band.lit{opacity:1;box-shadow:var(--shadow-lg)}
+.band.trust{background:linear-gradient(90deg,#0e2f57,#123a63);color:#cfe9ff;border:1px solid rgba(255,255,255,.12)}
+.band.trust b{color:var(--cloud68)}
+.band.sources{background:rgba(255,255,255,.6);border:1.5px solid var(--card-border);color:var(--ink-muted)}
+.band.sources .s{display:inline-flex;align-items:center;gap:6px;margin:0 10px;font-weight:700;color:var(--eb15)}
+.band.sources .s .e{font-size:15px}
+
+/* ---------------------------------------------------------- NARRAÇÃO ---- */
+.narr{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;padding:10px clamp(16px,4vw,44px) 30px}
+@media(max-width:860px){.narr{grid-template-columns:1fr}}
+.panel{background:#fff;border:1.5px solid var(--card-border);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow)}
+.panel h3{font-family:var(--display);font-size:18px;font-weight:600;color:var(--eb15);letter-spacing:-.01em}
+.panel .stitle{font-size:12px;font-weight:800;color:var(--eb50);text-transform:uppercase;letter-spacing:.14em}
+.panel .ssub{font-size:13.5px;color:var(--ink-muted);line-height:1.5;margin-top:6px}
+.panel .take{margin-top:12px;font-size:13px;line-height:1.5;border-left:3px solid var(--cloud68);padding-left:12px;color:var(--eb15);font-weight:600}
+.panel .sfline{margin-top:12px;font-size:12.5px;font-weight:700;color:var(--eb30);display:flex;align-items:center;gap:8px}
+.panel .sfline .tag{background:linear-gradient(135deg,var(--eb30),var(--eb50));color:#fff;border-radius:20px;padding:3px 12px}
+
+.steps{list-style:none;display:flex;flex-direction:column;gap:7px}
+.steps li{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:10px;border:1.5px solid var(--card-border);
+  background:var(--cloud95);opacity:.5;transition:.25s}
+.steps li.on{opacity:1;border-color:var(--eb50);box-shadow:var(--glow);background:#fff;transform:translateX(3px)}
+.steps li.done{opacity:1;background:#fff}
+.steps li .b{width:34px;flex:none;font-size:10.5px;font-weight:900;color:#fff;border-radius:7px;padding:4px 0;text-align:center;line-height:1.1}
+.steps li .lab{font-size:12px;font-weight:700;color:var(--eb15)}
+.steps li .lab small{display:block;font-weight:500;color:var(--ink-muted);font-size:11px;margin-top:2px}
+
+.legend{display:flex;flex-wrap:wrap;gap:12px;padding:0 clamp(16px,4vw,44px) 8px;font-size:11.5px;color:var(--ink-muted);font-weight:700}
+.legend .p{display:inline-flex;align-items:center;gap:6px}
+.legend .sw{width:20px;height:4px;border-radius:3px}
+
+.foot{padding:16px clamp(16px,4vw,44px) 34px;border-top:1px solid var(--card-border);
+  font-size:12px;color:var(--ink-muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.foot code{background:#e7f1fb;padding:1px 6px;border-radius:6px;color:var(--eb30);font-weight:700}
+
+/* -------- MODO EMBED (dentro do Hub, aba Arquitetura) — só o Mapa completo, sem cromo -------- */
+body.embed{background:transparent}
+body.embed .hero,body.embed .keymsg,body.embed .controls,
+body.embed .legend,body.embed .narr,body.embed .foot{display:none}
+body.embed .stage-scroll{padding:8px 6px}
+</style>
+</head>
+<body>
+
+<!-- ================================ HERO ================================ -->
+<header class="hero">
+  <div class="hero__top">
+    <span class="badge-sf"><img class="sf-logo" src="../assets/salesforce-logo.png" alt="Salesforce"> Latam Architecture Team</span>
+    <a class="back" href="../index.html?aba=2">← Voltar ao Hub</a>
+  </div>
+  <h1>Arquitetura de Referência <span class="hl">Multi-Agente</span> · Headless</h1>
+  <p class="sub">Uma arquitetura <b>componível</b>: canais plugáveis, experiência headless, agentes que raciocinam,
+    modelo como commodity e o diferencial na <b>Camada de Contexto</b>. Percorra as <b>jornadas de adoção</b> —
+    a arquitetura se constrói camada por camada, com os fluxos de chamada reais de cada cenário.
+    <b>Clique em qualquer camada</b> para explorar o que ela faz.</p>
+</header>
+
+<div class="keymsg"><span class="k">🎯</span>
+  <span>A vantagem competitiva está na <b>Camada de Contexto</b> e nos <b>workflows maduros</b> — não no Modelo (LLM) nem na Camada de Agentes. Modelo é commodity. Contexto é estratégico.</span></div>
+
+<!-- ============================== CONTROLES ============================== -->
+<div class="controls">
+  <div class="scene-rail" id="rail"></div>
+  <span class="spacer"></span>
+  <button class="btn btn--play" id="btnPlay">▶ Reproduzir jornada</button>
+  <button class="btn btn--ghost" id="btnMap">🗺️ Mapa completo</button>
+  <button class="btn btn--ghost" id="btnSF">☁️ Mapeamento Salesforce</button>
+</div>
+
+<div class="legend">
+  <span class="p"><span class="sw" style="background:var(--f-call)"></span> Chamada (REST / MCP / A2A)</span>
+  <span class="p"><span class="sw" style="background:var(--f-reason)"></span> Raciocínio (Modelo)</span>
+  <span class="p"><span class="sw" style="background:var(--f-rag)"></span> RAG (Contexto)</span>
+  <span class="p"><span class="sw" style="background:var(--f-native)"></span> Native / MCP Call</span>
+  <span class="p"><span class="sw" style="background:var(--f-feed)"></span> Dados alimentam o contexto</span>
+  <span class="p"><span class="sw" style="background:var(--f-orch)"></span> Orquestração (Super Agent)</span>
+</div>
+
+<!-- ================================ STAGE ================================ -->
+<div class="stage-scroll">
+<div class="stage" id="stage">
+  <svg id="wires"></svg>
+  <div id="packet"></div>
+
+  <!-- ---------- TOP COLUMNS ---------- -->
+  <div class="top-cols">
+
+    <!-- CHANNEL -->
+    <div class="col" id="L-canal">
+      <div class="lname">Camada de Canais<small>headless — plugáveis</small></div>
+      <div class="node" id="ch-sfui"><div class="t"><span class="e">🔷</span>Salesforce UI</div></div>
+      <div class="node" id="ch-conv"><div class="t"><span class="e">💬</span>Canais conversacionais</div>
+        <div class="chips"><span>WhatsApp</span><span>Slack</span><span>Teams</span><span>ChatGPT</span><span>Claude</span><span>API</span></div></div>
+      <div class="node mut" id="ch-trad"><div class="t"><span class="e">🌐</span>Canais tradicionais</div>
+        <div class="chips"><span>Web</span><span>E-mail</span><span>Voz</span><span>URA</span></div></div>
+    </div>
+
+    <!-- SUPER AGENT -->
+    <div class="col" id="L-super">
+      <div class="lname">Camada de Super Agents<small>control plane</small></div>
+      <div class="sf-tag">MuleSoft Agent Fabric</div>
+      <div class="superrow"><div class="sa"><span class="e">🕸️</span>Super Agent</div><div class="sa"><span class="e">🕸️</span>Super Agent</div><div class="sa"><span class="e">🕸️</span>Super Agent</div></div>
+      <div class="cplane">
+        <div class="cpt">Enterprise Agentic Control Plane</div>
+        <div class="cbar"><span class="dot"></span>Orchestration &amp; Runtime</div>
+        <div class="cbar"><span class="dot"></span>Observability</div>
+        <div class="cbar"><span class="dot"></span>Agents Catalog / Registry</div>
+        <div class="cbar"><span class="dot"></span>Real-time Governance</div>
+        <div class="cbar"><span class="dot"></span>Security &amp; Trust</div>
+      </div>
+    </div>
+
+    <!-- BUSINESS APPS AGENTS -->
+    <div class="col" id="L-agents">
+      <div class="lname">Camada de Agentes<small>apps &amp; plataformas</small></div>
+      <div class="sf-tag">AgentForce</div>
+      <div class="node" id="ag-biz"><div class="t"><span class="e">🤖</span>Business Apps Agent</div>
+        <div class="agentgrid"><div class="a">🤖</div><div class="a">🤖</div><div class="a">🤖</div><div class="a">🤖</div><div class="a">🤖</div><div class="a">🤖</div></div></div>
+      <div class="node mut" id="ag-other"><div class="t"><span class="e">🧩</span>Other Agents</div>
+        <div class="chips"><span>Azure Foundry</span><span>Google Vertex</span><span>Amazon Bedrock</span></div></div>
+    </div>
+
+    <!-- DYNAMIC EXPERIENCE -->
+    <div class="col" id="L-dx">
+      <div class="lname">Dynamic Experience<small>renderização dinâmica</small></div>
+      <div class="sf-tag">Headless</div>
+      <div class="node mut" id="dx-render"><div class="t"><span class="e">🖥️</span>Conversational Render Engine</div>
+        <div class="d">Escuta os canais, puxa funcionalidade via MCP e <b>renderiza por canal</b>. Headless = 100% de interoperabilidade.</div></div>
+    </div>
+
+    <!-- MCP LAYER -->
+    <div class="col" id="L-mcp">
+      <div class="lname">Camada MCP<small>protocolo do setor</small></div>
+      <div class="sf-tag">MCP</div>
+      <div class="mcprow"><span class="e">🔌</span>MCP Server · Sales</div>
+      <div class="mcprow"><span class="e">🔌</span>MCP Server · Marketing</div>
+      <div class="mcprow"><span class="e">🔌</span>MCP Server · Service</div>
+      <div class="mcprow"><span class="e">🔌</span>MCP Server · Industry</div>
+      <div class="mcprow"><span class="e">🔌</span>MCP Server · ERP</div>
+      <div class="mcprow"><span class="e">🔌</span>MCP Server · Outras plataformas</div>
+    </div>
+
+    <!-- BUSINESS APPLICATIONS -->
+    <div class="col" id="L-apps">
+      <div class="lname">Aplicações de Negócio<small>estado &amp; sistemas</small></div>
+      <div class="sf-tag">Salesforce Clouds</div>
+      <div class="appbox crm" id="app-crm"><div class="h">CRM</div><div class="mini"><span>Marketing</span><span>Sales</span><span>Service</span></div></div>
+      <div class="appbox erp" id="app-erp"><div class="h">ERP</div><div class="mini"><span>SAP</span><span>Oracle</span><span>Totvs</span></div></div>
+      <div class="appbox core" id="app-core"><div class="h">Core Business</div><div class="mini"><span>Core bancário</span><span>Legados</span></div></div>
+    </div>
+  </div>
+
+  <!-- ---------- TRUST BAND ---------- -->
+  <div class="band trust" id="L-trust">🔒 <b>Trust Layer</b> — Guardrails · Zero-Data Retention · Detecção de toxicidade · Data masking · Defesa a prompt injection &nbsp;|&nbsp; atravessa todas as camadas</div>
+
+  <!-- ---------- MID COLUMNS: CONTEXT + MODEL ---------- -->
+  <div class="mid-cols">
+    <div class="col" id="L-context">
+      <div class="lname">Camada de Contexto<small>o diferencial competitivo</small></div>
+      <div class="sf-tag">Data 360° + Informatica</div>
+      <div class="ctxrow">
+        <div class="c"><span class="e">🧮</span>Vector Semantic DB<br><small>embeddings</small></div>
+        <div class="c"><span class="e">🕸️</span>Graph Ontology DB<br><small>relações</small></div>
+        <div class="c"><span class="e">🎯</span>Activation Profiles</div>
+      </div>
+      <div class="ctxbar">Mastering (Cliente · Produto · Fornecedor)</div>
+      <div class="ctxbar">Profiling &amp; Cleaning · Data Governance &amp; Lineage</div>
+      <div class="ctxbar">Data ingestion (estruturado + não-estruturado)</div>
+    </div>
+    <div class="col" id="L-model">
+      <div class="lname">Camada de Modelo (LLM)<small>commodity</small></div>
+      <div class="sf-tag">LLM · commodity</div>
+      <div class="modelgrid"><span>Gemini</span><span>OpenAI</span><span>Anthropic</span><span>Meta</span><span>Mistral</span><span>Gemma</span><span>Kimi</span><span>DeepSeek</span></div>
+      <div class="d" style="margin-top:8px;font-size:10.5px;color:var(--ink-muted)">O modelo raciocina, mas não é o diferencial — é intercambiável.</div>
+    </div>
+  </div>
+
+  <!-- ---------- SOURCES BAND ---------- -->
+  <div class="band sources" id="L-sources">
+    <span class="s"><span class="e">📄</span>Não-estruturado (PDF, docs)</span>
+    <span class="s"><span class="e">🗄️</span>Datalakes / Datamesh / Warehouses</span>
+    <span class="s"><span class="e">🛢️</span>Bancos relacionais do core</span>
+  </div>
+</div>
+</div>
+
+<!-- ============================== NARRAÇÃO ============================== -->
+<div class="narr">
+  <div class="panel">
+    <div class="stitle" id="n-stitle">Cenário</div>
+    <h3 id="n-title">—</h3>
+    <p class="ssub" id="n-sub">—</p>
+    <div class="take" id="n-take">—</div>
+    <div class="sfline" id="n-sf" style="display:none">Mapeia para <span class="tag" id="n-sf-tag"></span></div>
+  </div>
+  <div class="panel">
+    <div class="stitle">Fluxo de chamada</div>
+    <ul class="steps" id="n-steps"></ul>
+  </div>
+</div>
+
+<footer class="foot">
+  <span>Arquitetura de Referência Multi-Agente · Headless — jornadas de adoção · Latam Architecture Team</span>
+  <span>Identidade: Brand Central 2026 · Hub Instituições Financeiras Agênticas</span>
+</footer>
+
+<script>
+// ============================================================================
+// Cores dos fluxos + camadas ativas por cenário + passos numerados (fiéis ao deck)
+// ============================================================================
+const C = { call:'#FF538A', reason:'#D17DFE', rag:'#04E1CB', native:'#FCC003', feed:'#066AFE', orch:'#00B3FF' };
+
+// Todas as camadas (colunas e bandas) que podem acender
+const ALL = ['L-canal','L-super','L-agents','L-dx','L-mcp','L-apps','L-trust','L-context','L-model','L-sources'];
+
+const SCENES = [
+  { n:1, title:'Salesforce como sempre', tag:'Salesforce Clouds',
+    sub:'Chamada síncrona a partir de Mobile / Web / LWC — o canal fala direto com a aplicação de negócio.',
+    take:'É o Salesforce como já conhecemos: ainda sem camada agêntica, sem headless, sem contexto.',
+    active:['L-canal','L-apps'],
+    steps:[ {b:'', c:'call', from:'ch-conv', to:'app-crm', lab:'Chamada síncrona', sub:'Mobile / Web / LWC → aplicação de negócio'} ] },
+
+  { n:2, title:'+ Headless & MCP', tag:'Headless',
+    sub:'Entram o Render Engine headless e a Camada MCP — a experiência é montada por API, não presa à tela.',
+    take:'Headless = 100% de interoperabilidade: trocar de canal não reescreve a inteligência.',
+    active:['L-canal','L-dx','L-mcp','L-apps'],
+    steps:[
+      {b:'', c:'call',   from:'ch-conv', to:'dx-render', lab:'HLX · Renderização dinâmica', sub:'o canal conversacional aciona o Render Engine'},
+      {b:'', c:'call',   from:'dx-render', to:'L-mcp',   lab:'Render Engine → MCP', sub:'o Headless puxa funcionalidade via MCP'},
+      {b:'', c:'native', from:'L-mcp', to:'app-crm',     lab:'Clientes API das funcionalidades MCP', sub:'cada MCP Server expõe as capacidades de uma nuvem'},
+      {b:'', c:'native', from:'ch-trad', to:'L-mcp',     lab:'Canais tradicionais → MCP', sub:'também consomem funcionalidades por API'} ] },
+
+  { n:3, title:'+ Agentes & Modelo', tag:'AgentForce · Einstein Trust Layer',
+    sub:'Entram os Agentes (Agentforce) e a Camada de Modelo — o agente raciocina e executa, sob o Trust Layer.',
+    take:'O modelo é commodity; o Trust Layer atravessa todas as camadas. O agente é chamado por REST, MCP ou A2A.',
+    active:['L-canal','L-agents','L-model','L-mcp','L-apps','L-trust'],
+    steps:[
+      {b:'1', c:'call',   from:'ch-conv', to:'ag-biz',  lab:'REST API / MCP / A2A', sub:'o canal aciona o Business Apps Agent'},
+      {b:'2', c:'reason', from:'ag-biz',  to:'L-model',  lab:'Raciocínio', sub:'o agente raciocina no modelo (LLM)'},
+      {b:'3', c:'native', from:'ag-biz',  to:'L-mcp',    lab:'MCP Call (MuleSoft) / Native Call', sub:'o agente executa a ação'},
+      {b:'3', c:'native', from:'L-mcp',   to:'app-crm',  lab:'Native Call', sub:'…chega à aplicação de negócio'} ] },
+
+  { n:4, title:'+ Contexto (RAG)', tag:'Data 360° + Informatica',
+    sub:'Entra a Camada de Contexto — o agente lê o contexto corporativo (vetorial + grafo) antes de agir.',
+    take:'A vantagem competitiva mora aqui: contexto e dados maduros — não o modelo. Os dados corporativos alimentam o contexto.',
+    active:['L-canal','L-agents','L-model','L-mcp','L-apps','L-trust','L-context','L-sources'],
+    steps:[
+      {b:'1', c:'call',   from:'ch-conv', to:'ag-biz',    lab:'REST API / MCP / A2A', sub:''},
+      {b:'2', c:'rag',    from:'ag-biz',  to:'L-context', lab:'RAG (Vetorial semântico / Grafo de ontologia)', sub:'busca o contexto corporativo'},
+      {b:'3', c:'reason', from:'ag-biz',  to:'L-model',   lab:'Raciocínio + RAG aumentado', sub:''},
+      {b:'4', c:'native', from:'ag-biz',  to:'L-mcp',     lab:'MCP Call / Native Call', sub:''},
+      {b:'4', c:'native', from:'L-mcp',   to:'app-crm',   lab:'Native Call', sub:''},
+      {b:'6', c:'feed',   from:'L-sources', to:'L-context', lab:'Dados corporativos alimentam o contexto', sub:'estruturado + não-estruturado → Data 360'} ] },
+
+  { n:5, title:'+ Outros Agentes (A2A)', tag:'Azure · Vertex · Bedrock (A2A)',
+    sub:'Entram os Other Agents — o Agentforce orquestra agentes de terceiros por A2A.',
+    take:'Interoperabilidade real entre plataformas de agentes: A2A para orquestrar, MCP para executar, contexto compartilhado.',
+    active:['L-canal','L-agents','L-model','L-mcp','L-apps','L-trust','L-context','L-sources'],
+    steps:[
+      {b:'1',    c:'call',   from:'ch-conv', to:'ag-biz',    lab:'REST API / MCP / A2A', sub:''},
+      {b:'4.3',  c:'orch',   from:'ag-biz',  to:'ag-other',  lab:'A2A Call', sub:'orquestra um agente de terceiro'},
+      {b:'4.3.1',c:'rag',    from:'ag-other',to:'L-context', lab:'RAG', sub:'o agente externo também lê o contexto corporativo'},
+      {b:'4.3.2',c:'reason', from:'ag-other',to:'L-model',   lab:'Raciocínio + Contexto corporativo', sub:''},
+      {b:'4.3.3',c:'native', from:'ag-other',to:'L-mcp',     lab:'MCP Call', sub:''},
+      {b:'4',    c:'native', from:'L-mcp',   to:'app-crm',   lab:'Native Call', sub:''} ] },
+
+  { n:6, title:'+ Super Agents (Control Plane)', tag:'MuleSoft Agent Fabric',
+    sub:'Entra a Camada de Super Agents — o control plane governa e orquestra todos os agentes.',
+    take:'Orquestração multi-agente governada: observabilidade, catálogo e governança em tempo real. É o lugar certo da orquestração.',
+    active:ALL,
+    steps:[
+      {b:'1',   c:'call',   from:'ch-conv', to:'L-super',   lab:'REST API / MCP / A2A', sub:'o canal entra pelo Super Agent'},
+      {b:'2',   c:'rag',    from:'L-super', to:'L-context', lab:'RAG', sub:''},
+      {b:'3.0', c:'reason', from:'L-super', to:'L-model',   lab:'Raciocínio', sub:''},
+      {b:'4',   c:'orch',   from:'L-super', to:'ag-biz',    lab:'Orquestração de agentes (MCP / A2A)', sub:'distribui o trabalho'},
+      {b:'5',   c:'rag',    from:'ag-biz',  to:'L-context', lab:'RAG', sub:''},
+      {b:'6',   c:'reason', from:'ag-biz',  to:'L-model',   lab:'Raciocínio', sub:''},
+      {b:'7.1', c:'native', from:'ag-biz',  to:'L-mcp',     lab:'MCP Call · Salesforce', sub:''},
+      {b:'7.2', c:'native', from:'ag-biz',  to:'L-mcp',     lab:'MCP Call · SAP', sub:''},
+      {b:'7.3', c:'native', from:'L-mcp',   to:'app-core',  lab:'MCP Call · Core business', sub:''},
+      {b:'9',   c:'feed',   from:'L-sources', to:'L-context', lab:'Dados corporativos alimentam o contexto', sub:''} ] },
+];
+
+const byId = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const stage = byId('stage'), wires = byId('wires'), packet = byId('packet');
+let RUN = 0, current = 0, mapMode = false;
+let clickStep = { i:0, idx:0, active:false };   // revelação por clique: cenário atual + quantas conexões já saíram
+
+// -------- rail --------
+const rail = byId('rail');
+SCENES.forEach((s,i)=>{
+  const b=document.createElement('button');
+  b.className='scn'; b.innerHTML=`<span class="num">${s.n}</span>${s.title.replace(/^\+ /,'')}`;
+  b.onclick=()=>{ mapMode=false; byId('btnMap').classList.remove('on'); armSceneForClicks(i); };
+  rail.appendChild(b);
+});
+
+// -------- geometry helpers --------
+function centerOf(el){
+  const s=stage.getBoundingClientRect(), r=el.getBoundingClientRect();
+  return { x:r.left-s.left+r.width/2, y:r.top-s.top+r.height/2 };
+}
+function sizeWires(){ wires.setAttribute('width',stage.offsetWidth); wires.setAttribute('height',stage.offsetHeight); }
+function clearWires(){ while(wires.firstChild) wires.removeChild(wires.firstChild); }
+
+function drawWire(fromEl,toEl,color,animate){
+  sizeWires();
+  const A=centerOf(fromEl), B=centerOf(toEl);
+  const dx=B.x-A.x;
+  const c1x=A.x+dx*0.45, c2x=B.x-dx*0.45;
+  const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d',`M ${A.x} ${A.y} C ${c1x} ${A.y}, ${c2x} ${B.y}, ${B.x} ${B.y}`);
+  path.setAttribute('fill','none');
+  path.setAttribute('stroke',color);
+  path.setAttribute('stroke-width','2.6');
+  path.setAttribute('stroke-linecap','round');
+  path.setAttribute('stroke-dasharray','2 7');
+  path.setAttribute('opacity', animate?'1':'.45');
+  wires.appendChild(path);
+  if(animate){
+    const len=path.getTotalLength();
+    path.style.strokeDasharray=len; path.style.strokeDashoffset=len;
+    path.getBoundingClientRect();
+    path.style.transition='stroke-dashoffset .5s ease';
+    path.style.strokeDashoffset='0';
+    // após desenhar, volta ao tracejado "vivo"
+    setTimeout(()=>{ path.style.transition='none'; path.setAttribute('stroke-dasharray','2 7'); path.style.strokeDashoffset='0'; path.classList.add('flowing'); },520);
+  }
+  return path;
+}
+async function flyPacket(fromEl,toEl,color,ms=560){
+  const A=centerOf(fromEl), B=centerOf(toEl);
+  packet.style.background=`radial-gradient(circle at 35% 35%,#fff,${color} 60%,${color})`;
+  packet.style.boxShadow=`0 0 16px 5px ${color}aa`;
+  packet.style.transition='none'; packet.style.left=A.x+'px'; packet.style.top=A.y+'px'; packet.classList.add('go');
+  await sleep(20);
+  packet.style.transition=`left ${ms}ms cubic-bezier(.5,0,.3,1),top ${ms}ms cubic-bezier(.5,0,.3,1)`;
+  packet.style.left=B.x+'px'; packet.style.top=B.y+'px';
+  await sleep(ms);
+}
+
+// -------- scene rendering --------
+function paintStatic(scene){
+  ALL.forEach(id=>{ const el=byId(id); el.classList.remove('lit'); el.classList.add('dim'); });
+  scene.active.forEach(id=>{ byId(id).classList.remove('dim'); byId(id).classList.add('lit'); });
+  document.querySelectorAll('.node,.appbox').forEach(n=>n.classList.remove('on'));
+  document.querySelectorAll('.scn').forEach((b,k)=>b.classList.toggle('active',k===current));
+  // narração
+  byId('n-stitle').textContent = `Cenário ${scene.n} de ${SCENES.length}`;
+  byId('n-title').textContent = scene.title.replace(/^\+ /,'');
+  byId('n-sub').textContent = scene.sub;
+  byId('n-take').textContent = scene.take;
+  byId('n-sf').style.display='flex'; byId('n-sf-tag').textContent=scene.tag;
+  // passos
+  const ul=byId('n-steps'); ul.innerHTML='';
+  scene.steps.forEach((st,i)=>{
+    const li=document.createElement('li'); li.id='step-'+i;
+    li.innerHTML=`<span class="b" style="background:${C[st.c]}">${st.b||'→'}</span>
+      <span class="lab">${st.lab}${st.sub?`<small>${st.sub}</small>`:''}</span>`;
+    ul.appendChild(li);
+  });
+}
+function lightEndpoints(st){
+  const nodeish = id => { const el=byId(id); if(el.classList.contains('node')||el.classList.contains('appbox')) el.classList.add('on'); };
+  nodeish(st.from); nodeish(st.to);
+}
+
+async function showScene(i, animate){
+  const my=++RUN; current=i; const scene=SCENES[i];
+  clearWires(); packet.classList.remove('go');
+  paintStatic(scene);
+  if(!animate){ // desenha todos os fios estáticos
+    scene.steps.forEach(st=>drawWire(byId(st.from),byId(st.to),C[st.c],false));
+    return;
+  }
+  await sleep(260);
+  for(let s=0;s<scene.steps.length;s++){
+    if(my!==RUN) return;
+    const st=scene.steps[s];
+    const li=byId('step-'+s); li.classList.add('on');
+    drawWire(byId(st.from),byId(st.to),C[st.c],true);
+    lightEndpoints(st);
+    await flyPacket(byId(st.from),byId(st.to),C[st.c]);
+    if(my!==RUN) return;
+    li.classList.remove('on'); li.classList.add('done');
+    await sleep(300);
+  }
+  packet.classList.remove('go');
+}
+
+// -------- revelação por CLIQUE (uma conexão por clique, em qualquer lugar da tela) --------
+// Arma um cenário: acende as camadas + monta a lista de passos, mas NÃO desenha os fios;
+// cada clique revela a próxima conexão colorida.
+function armSceneForClicks(i){
+  RUN++;                                   // cancela qualquer animação temporizada em curso
+  current=i; const scene=SCENES[i];
+  clearWires(); packet.classList.remove('go');
+  paintStatic(scene);                      // camadas acesas + narração + lista de passos (sem fios ainda)
+  clickStep = { i, idx:0, active:true };
+}
+function revealNextWire(){
+  if(!clickStep.active || playing || mapMode) return;
+  const scene=SCENES[clickStep.i];
+  if(!scene || clickStep.idx>=scene.steps.length) return;   // já revelou todas as conexões
+  const s=clickStep.idx, st=scene.steps[s];
+  if(s>0){ const prev=byId('step-'+(s-1)); if(prev){ prev.classList.remove('on'); prev.classList.add('done'); } }
+  const li=byId('step-'+s); if(li) li.classList.add('on');
+  drawWire(byId(st.from),byId(st.to),C[st.c],true);
+  lightEndpoints(st);
+  flyPacket(byId(st.from),byId(st.to),C[st.c]);   // mesmo floreio do pacote (não bloqueia o clique)
+  clickStep.idx++;
+  if(clickStep.idx>=scene.steps.length){
+    setTimeout(()=>{ const last=byId('step-'+s); if(last){ last.classList.remove('on'); last.classList.add('done'); } packet.classList.remove('go'); },620);
+  }
+}
+// clique em QUALQUER lugar da tela revela a próxima conexão; os botões de controle mantêm sua função
+document.addEventListener('click',(ev)=>{ if(ev.target.closest('.controls')) return; revealNextWire(); });
+
+// -------- play all (reprodução sequencial das 6 jornadas) --------
+let playing=false;
+byId('btnPlay').onclick=async()=>{
+  if(playing){ playing=false; RUN++; byId('btnPlay').textContent='▶ Reproduzir jornada'; armSceneForClicks(current); return; }
+  mapMode=false; byId('btnMap').classList.remove('on');
+  clickStep.active=false;                 // durante a reprodução automática o clique não interfere
+  playing=true; byId('btnPlay').textContent='⏸ Parar';
+  for(let i=0;i<SCENES.length;i++){
+    if(!playing) break;
+    await showScene(i,true);
+    if(!playing) break;
+    await sleep(700);
+  }
+  playing=false; byId('btnPlay').textContent='▶ Reproduzir jornada';
+  armSceneForClicks(current);             // ao terminar, volta ao modo "uma conexão por clique"
+};
+
+// -------- mapa completo --------
+byId('btnMap').onclick=()=>{
+  playing=false; RUN++; byId('btnPlay').textContent='▶ Reproduzir jornada';
+  mapMode=!mapMode; byId('btnMap').classList.toggle('on',mapMode);
+  if(mapMode){
+    clearWires(); packet.classList.remove('go');
+    ALL.forEach(id=>{ byId(id).classList.remove('dim'); byId(id).classList.add('lit'); });
+    document.querySelectorAll('.scn').forEach(b=>b.classList.remove('active'));
+    byId('n-stitle').textContent='Mapa completo';
+    byId('n-title').textContent='Arquitetura componível — visão lógica';
+    byId('n-sub').textContent='Todas as camadas ativas ao mesmo tempo, como na visão lógica do deck. Ative o mapeamento Salesforce para ver os produtos.';
+    byId('n-take').textContent='A vantagem competitiva está na Camada de Contexto e nos workflows maduros — não no Modelo nem na Camada de Agentes.';
+    byId('n-sf').style.display='none';
+    byId('n-steps').innerHTML='';
+  } else { armSceneForClicks(current); }   // ao sair do mapa, volta ao modo "uma conexão por clique"
+};
+
+// -------- toggle mapeamento Salesforce --------
+byId('btnSF').onclick=()=>{
+  const on=document.body.classList.toggle('show-sf');
+  byId('btnSF').classList.toggle('on',on);
+};
+
+// -------- init --------
+// redesenha só as conexões JÁ reveladas por clique (reposiciona ao mudar o tamanho)
+function redrawRevealed(){
+  clearWires();
+  const scene=SCENES[clickStep.i]; if(!scene) return;
+  for(let s=0;s<clickStep.idx && s<scene.steps.length;s++){
+    const st=scene.steps[s]; drawWire(byId(st.from),byId(st.to),C[st.c],false);
+  }
+}
+window.addEventListener('resize',()=>{
+  if(mapMode) drawMapaCompleto();
+  else if(playing) return;
+  else if(clickStep.active) redrawRevealed();   // preserva a revelação por clique
+  else showScene(current,false);
+});
+
+// desenha o Mapa completo (todas as camadas acesas) — reutilizado no modo embed
+function drawMapaCompleto(){
+  clearWires(); packet.classList.remove('go');
+  ALL.forEach(id=>{ byId(id).classList.remove('dim'); byId(id).classList.add('lit'); });
+  document.querySelectorAll('.scn').forEach(b=>b.classList.remove('active'));
+}
+
+// Modo embed: o Hub embute esta página (aba Arquitetura) mostrando o MAPA COMPLETO,
+// sem hero/controles/narração. Os cenários animados abrem a página inteira em nova aba.
+const EMBED = new URLSearchParams(location.search).get('embed') === '1';
+if(EMBED){
+  document.body.classList.add('embed','show-sf');   // mostra o mapeamento Salesforce nas etiquetas
+  mapMode = true;
+  drawMapaCompleto();
+} else {
+  armSceneForClicks(0);   // abre pronto para revelar uma conexão a cada clique
+}
+</script>
+</body>
+</html>
