@@ -21,6 +21,9 @@ APP_NAME="${1:-}"
 # Contas Salesforce internas NÃO podem ter app pessoal — todo app precisa de um
 # team. Passe o team via 2º argumento ou HEROKU_TEAM (ex.: se-latam).
 TEAM="${2:-${HEROKU_TEAM:-}}"
+# Alguns teams só rodam app dentro de um Private Space. Passe o space via 3º
+# argumento ou HEROKU_SPACE (ex.: se-latam-internal). Com space, o team é inferido.
+SPACE="${3:-${HEROKU_SPACE:-}}"
 
 echo "▶ Montando o artefato (build.sh)..."
 ./build.sh
@@ -49,15 +52,20 @@ else
   git -c commit.gpgsign=false commit -q -m "Site das IFs MCP — atualização" || true
 fi
 
-# cria/associa o app (sempre num team — exigência de conta Salesforce interna)
-TEAMFLAG=""
-[ -n "$TEAM" ] && TEAMFLAG="--team $TEAM"
+# cria/associa o app. Se houver space, cria dentro dele (o team é inferido do
+# space); senão, cria no team. Conta Salesforce interna exige team/space.
+CREATEFLAGS=""
+if [ -n "$SPACE" ]; then
+  CREATEFLAGS="--space $SPACE"
+elif [ -n "$TEAM" ]; then
+  CREATEFLAGS="--team $TEAM"
+fi
 if [ -n "$APP_NAME" ]; then
-  echo "▶ Criando/associando app: $APP_NAME ${TEAM:+(team: $TEAM)}"
-  heroku apps:create "$APP_NAME" $TEAMFLAG || heroku git:remote -a "$APP_NAME"
+  echo "▶ Criando/associando app: $APP_NAME ${SPACE:+(space: $SPACE)}${TEAM:+ ${SPACE:+· }team: $TEAM}"
+  heroku apps:create "$APP_NAME" $CREATEFLAGS || heroku git:remote -a "$APP_NAME"
 else
-  echo "▶ Criando app com nome aleatório ${TEAM:+(team: $TEAM)}..."
-  heroku apps:create $TEAMFLAG
+  echo "▶ Criando app com nome aleatório ${SPACE:+(space: $SPACE)}..."
+  heroku apps:create $CREATEFLAGS
 fi
 
 # segredo → Config Vars (nunca no repo). --confirm-less: já estamos no app certo.
