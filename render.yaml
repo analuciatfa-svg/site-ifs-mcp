@@ -1,0 +1,19 @@
+# Blueprint do Render — publica o Site das IFs MCP numa URL pública HTTPS.
+# O app (app.py) serve o site estático + as rotas /mcp/* na mesma origem.
+# O segredo do MCP vive SÓ nas Environment Variables do Render (sync:false =
+# você digita no painel; nunca fica no repo).
+services:
+  - type: web
+    name: site-ifs-mcp
+    runtime: python
+    plan: free
+    # sem dependências externas (stdlib puro); pip roda com o requirements vazio
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python3 app.py"
+    envVars:
+      - key: MCP_CLIENT_ID
+        sync: false        # digitado no painel do Render (secreto)
+      - key: MCP_CLIENT_SECRET
+        sync: false        # digitado no painel do Render (secreto)
+      - key: MCP_INSTANCE_URL
+        value: https://trailsignup-2979e1c6606a3b.my.salesforce.com
