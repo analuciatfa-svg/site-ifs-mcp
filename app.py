@@ -24,6 +24,7 @@ Rotas:
 
 import json
 import os
+import socket
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -139,9 +140,27 @@ class Handler(BaseHTTPRequestHandler):
         return self._send(404, json.dumps({"erro": "nao encontrado"}))
 
 
+class DualStackServer(ThreadingHTTPServer):
+    """Escuta em IPv6 aceitando também IPv4 (dual-stack).
+
+    O roteador do Heroku (geração Fir/Cloud Native) conecta no dyno por IPv6
+    ([::]:$PORT). Um servidor só-IPv4 (0.0.0.0) faz o health check falhar com
+    'Connection refused ... IPv6 connections on [::]:$PORT' e o dyno cicla. Ao
+    ligar em '::' com IPV6_V6ONLY desligado, o mesmo socket atende IPv6 e IPv4.
+    """
+    address_family = socket.AF_INET6
+
+    def server_bind(self):
+        try:
+            self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+        except (AttributeError, OSError):
+            pass
+        super().server_bind()
+
+
 def main():
-    srv = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
-    print(f"Site das IFs MCP (produção) ouvindo na porta {PORT} · "
+    srv = DualStackServer(("::", PORT), Handler)
+    print(f"Site das IFs MCP (produção) ouvindo em [::]:{PORT} (IPv6+IPv4) · "
           f"MCP {'CONFIGURADO' if _mcp else 'sem credencial'}")
     srv.serve_forever()
 
